@@ -19,7 +19,7 @@ rekber/
 │           ├── process-withdrawal/   # Seller withdrawal processing
 │           └── webhook-payment/      # Payment gateway callback
 │
-└── frontend/                         # Flutter Mobile App
+└── mobile/                           # Flutter Mobile App
     ├── lib/
     │   ├── main.dart                 # Entry point
     │   ├── app.dart                  # Root widget with BLoC providers
@@ -69,12 +69,12 @@ rekber/
    supabase functions deploy webhook-payment
    ```
 
-### Frontend Setup
+### Mobile Setup
 1. Update Supabase credentials in `lib/core/constants/api_constants.dart`
 2. Download [Plus Jakarta Sans](https://fonts.google.com/specimen/Plus+Jakarta+Sans) fonts to `assets/fonts/`
 3. Install dependencies:
    ```bash
-   cd frontend
+   cd mobile
    flutter pub get
    ```
 4. Run the app:
