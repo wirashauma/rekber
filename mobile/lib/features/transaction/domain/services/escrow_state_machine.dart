@@ -6,7 +6,7 @@
 /// ============================================================
 
 import 'package:dartz/dartz.dart';
-import '../../../core/errors/failures.dart';
+import '../../../../core/errors/failures.dart';
 
 /// Represents a valid state transition in the escrow lifecycle
 class EscrowTransition {

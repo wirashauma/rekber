@@ -1,5 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../constants/api_constants.dart';
+import '../../core/constants/api_constants.dart';
 
 /// Supabase configuration & initialization
 class SupabaseConfig {
