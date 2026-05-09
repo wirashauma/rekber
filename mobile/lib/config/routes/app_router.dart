@@ -8,12 +8,12 @@ import '../../features/chat/presentation/pages/ai_assistant_screen.dart';
 import '../../features/home/presentation/pages/notification_page.dart';
 import '../../features/transaction/presentation/pages/transaction_detail_page.dart';
 import '../../features/chat/presentation/pages/chat_room_page.dart';
-import '../../features/wallet/presentation/pages/topup_page.dart';
-import '../../features/wallet/presentation/pages/withdraw_page.dart';
-import '../../features/transaction/presentation/pages/input_kode_page.dart';
-import '../../features/transaction/presentation/pages/history_page.dart';
-import '../../features/home/presentation/pages/kalkulator_page.dart';
-import '../../features/home/presentation/pages/help_page.dart';
+import '../../features/wallet/presentation/pages/top_up_screen.dart';
+import '../../features/wallet/presentation/pages/tarik_dana_screen.dart';
+import '../../features/transaction/presentation/pages/input_kode_screen.dart';
+import '../../features/transaction/presentation/pages/riwayat_screen.dart';
+import '../../features/transaction/presentation/pages/kalkulator_screen.dart';
+
 import '../../features/settings/presentation/pages/edit_profile_screen.dart';
 import '../../features/settings/presentation/pages/kyc_screen.dart';
 import '../../features/settings/presentation/pages/help_center_screen.dart';
@@ -55,32 +55,32 @@ class AppRouter {
       GoRoute(
         path: '/topup',
         name: 'topup',
-        builder: (context, state) => const TopUpPage(),
+        builder: (context, state) => const TopUpScreen(),
       ),
       GoRoute(
         path: '/input-kode',
         name: 'input-kode',
-        builder: (context, state) => const InputKodePage(),
+        builder: (context, state) => const InputKodeScreen(),
       ),
       GoRoute(
         path: '/kalkulator',
         name: 'kalkulator',
-        builder: (context, state) => const KalkulatorPage(),
+        builder: (context, state) => const KalkulatorScreen(),
       ),
       GoRoute(
         path: '/tarik-dana',
         name: 'tarik-dana',
-        builder: (context, state) => const WithdrawPage(),
+        builder: (context, state) => const TarikDanaScreen(),
       ),
       GoRoute(
         path: '/riwayat',
         name: 'riwayat',
-        builder: (context, state) => const HistoryPage(),
+        builder: (context, state) => const RiwayatScreen(),
       ),
       GoRoute(
         path: '/bantuan',
         name: 'bantuan',
-        builder: (context, state) => const HelpPage(),
+        builder: (context, state) => const HelpCenterScreen(),
       ),
 
       // ── Transaction Routes ──
