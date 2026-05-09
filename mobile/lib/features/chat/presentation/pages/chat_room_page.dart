@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_dimensions.dart';
-import '../../../../core/constants/app_text_styles.dart';
+import '../../../../core/widgets/brutalist_widgets.dart';
 
-/// Chat Room Page — Real-time transaction chat with proof uploads
 class ChatRoomPage extends StatefulWidget {
   const ChatRoomPage({super.key});
 
@@ -14,380 +12,173 @@ class ChatRoomPage extends StatefulWidget {
 class _ChatRoomPageState extends State<ChatRoomPage> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
-  final String _currentUserId = 'user_1'; // Mock current user
+  final String _currentUserId = 'user_1';
 
-  // Mock messages
   final List<Map<String, dynamic>> _messages = [
     {
       'id': '1',
-      'senderId': null,
-      'type': 'system',
-      'message': '✅ Pembayaran dikonfirmasi. Dana ditahan di escrow.',
-      'createdAt': '2026-05-08T08:00:00Z',
+      'senderId': 'user_2',
+      'senderName': 'Toko Elektronik',
+      'message': 'Halo gan, barangnya sudah siap dikirim ya.',
+      'time': '10:00',
+      'status': 3, // Read
     },
     {
       'id': '2',
-      'senderId': 'user_2',
-      'senderName': 'Toko Elektronik',
-      'type': 'text',
-      'message': 'Terima kasih sudah order! Pesanan akan segera diproses.',
-      'createdAt': '2026-05-08T08:05:00Z',
+      'senderId': 'user_1',
+      'senderName': 'Me',
+      'message': 'Oke siap, tolong dipacking kayu ya biar aman.',
+      'time': '10:05',
+      'status': 3, // Read
     },
     {
       'id': '3',
-      'senderId': 'user_1',
-      'senderName': 'John Doe',
-      'type': 'text',
-      'message': 'Baik, terima kasih. Mohon dikemas dengan aman ya.',
-      'createdAt': '2026-05-08T08:10:00Z',
-    },
-    {
-      'id': '4',
-      'senderId': null,
-      'type': 'system',
-      'message': '📦 Penjual memproses pesanan.',
-      'createdAt': '2026-05-08T09:00:00Z',
-    },
-    {
-      'id': '5',
       'senderId': 'user_2',
       'senderName': 'Toko Elektronik',
-      'type': 'text',
-      'message': 'Pesanan sudah dikemas. Ini foto kemasannya:',
-      'createdAt': '2026-05-08T10:00:00Z',
-    },
-    {
-      'id': '6',
-      'senderId': 'user_2',
-      'senderName': 'Toko Elektronik',
-      'type': 'proof',
-      'message': 'Bukti pengiriman - Resi: JNE1234567890',
-      'createdAt': '2026-05-08T10:05:00Z',
-    },
-    {
-      'id': '7',
-      'senderId': null,
-      'type': 'system',
-      'message': '🚚 Pesanan telah dikirim! Silakan konfirmasi setelah menerima barang.',
-      'createdAt': '2026-05-08T10:10:00Z',
+      'message': 'Siap gan, laksanakan! 🚀',
+      'time': '10:07',
+      'status': 2, // Delivered
     },
   ];
-
-  @override
-  void dispose() {
-    _messageController.dispose();
-    _scrollController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(context),
       body: Column(
         children: [
-          // ── Transaction Info Banner ──
-          _buildTransactionBanner(),
-
-          // ── Messages List ──
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppDimensions.base,
-                vertical: AppDimensions.sm,
-              ),
+              padding: const EdgeInsets.all(20),
               itemCount: _messages.length,
               itemBuilder: (context, index) {
-                return _buildMessageBubble(_messages[index]);
+                final msg = _messages[index];
+                final isMe = msg['senderId'] == _currentUserId;
+                return _buildChatBubble(msg, isMe);
               },
             ),
           ),
-
-          // ── Input Bar ──
-          _buildInputBar(),
+          _buildInputArea(),
         ],
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
+      toolbarHeight: 80,
+      backgroundColor: AppColors.background,
+      elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-        onPressed: () => Navigator.of(context).pop(),
+        icon: const Icon(Icons.arrow_back, color: AppColors.black),
+        onPressed: () => Navigator.pop(context),
       ),
       title: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Chat Transaksi',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            'Beli Akun Valorant - Rp450.000',
+            style: TextStyle(
+              color: AppColors.black,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           Text(
-            'RKB-20260508-001234',
+            'ID: TRX-9921',
             style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-              color: AppColors.textTertiary,
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ],
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.info_outline_rounded),
-          onPressed: () {
-            // TODO: Navigate to transaction detail
-          },
-        ),
+      actions: const [
+        SizedBox(width: 16),
       ],
     );
   }
 
-  Widget _buildTransactionBanner() {
-    return Container(
-      margin: const EdgeInsets.all(AppDimensions.base),
-      padding: const EdgeInsets.all(AppDimensions.md),
-      decoration: BoxDecoration(
-        color: AppColors.primarySurface,
-        borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-      ),
-      child: Row(
+  Widget _buildChatBubble(Map<String, dynamic> msg, bool isMe) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Column(
+        crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.shield_rounded, color: AppColors.primary, size: 20),
-          const SizedBox(width: AppDimensions.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'iPhone 15 Case Premium',
-                  style: TextStyle(
-                    fontFamily: 'PlusJakartaSans',
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
-                  ),
+          Row(
+            mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              if (!isMe) ...[
+                const CircleAvatar(
+                  backgroundColor: AppColors.black,
+                  radius: 12,
+                  child: Icon(Icons.person, size: 14, color: Colors.white),
                 ),
-                Text(
-                  'Rp2.500.000 • Dikirim',
-                  style: TextStyle(
-                    fontFamily: 'PlusJakartaSans',
-                    fontSize: 11,
-                    color: AppColors.primary.withOpacity(0.7),
-                  ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                msg['senderName'],
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 10,
+                  color: AppColors.black,
+                ),
+              ),
+              if (isMe) ...[
+                const SizedBox(width: 8),
+                const CircleAvatar(
+                  backgroundColor: AppColors.black,
+                  radius: 12,
+                  child: Icon(Icons.person, size: 14, color: Colors.white),
                 ),
               ],
-            ),
+            ],
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.statusShipped.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-            ),
-            child: const Text(
-              'Dikirim',
-              style: TextStyle(
-                fontFamily: 'PlusJakartaSans',
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppColors.statusShipped,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble(Map<String, dynamic> message) {
-    final type = message['type'] as String;
-    final isSystem = type == 'system';
-    final isMe = message['senderId'] == _currentUserId;
-
-    if (isSystem) {
-      return _buildSystemMessage(message['message'] as String);
-    }
-
-    if (type == 'proof') {
-      return _buildProofMessage(message, isMe);
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isMe) ...[
-            CircleAvatar(
-              radius: 14,
-              backgroundColor: AppColors.primarySurface,
-              child: Text(
-                (message['senderName'] as String)[0],
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
+          const SizedBox(height: 4),
+          BrutalistCard(
+            backgroundColor: isMe ? const Color(0xFFFFD54F) : Colors.white,
+            borderRadius: 8,
+            borderWidth: 2.0,
+            shadowOffset: const Offset(3, 3),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 10,
-              ),
-              decoration: BoxDecoration(
-                color: isMe ? AppColors.primary : AppColors.surface,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isMe ? 16 : 4),
-                  bottomRight: Radius.circular(isMe ? 4 : 16),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.7,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!isMe)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text(
-                        message['senderName'] as String,
-                        style: TextStyle(
-                          fontFamily: 'PlusJakartaSans',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: isMe ? Colors.white70 : AppColors.primary,
-                        ),
-                      ),
-                    ),
                   Text(
-                    message['message'] as String,
-                    style: TextStyle(
-                      fontFamily: 'PlusJakartaSans',
+                    msg['message'],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
                       fontSize: 14,
-                      color: isMe ? Colors.white : AppColors.textPrimary,
-                      height: 1.4,
+                      color: AppColors.black,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    _formatTime(message['createdAt'] as String),
-                    style: TextStyle(
-                      fontFamily: 'PlusJakartaSans',
-                      fontSize: 10,
-                      color: isMe
-                          ? Colors.white.withOpacity(0.6)
-                          : AppColors.textTertiary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          if (isMe) const SizedBox(width: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSystemMessage(String message) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 24),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
-        ),
-        child: Text(
-          message,
-          style: const TextStyle(
-            fontFamily: 'PlusJakartaSans',
-            fontSize: 12,
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w500,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProofMessage(Map<String, dynamic> message, bool isMe) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment:
-            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children: [
-          if (!isMe) const SizedBox(width: 36),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.accentLight,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-                border: Border.all(
-                  color: AppColors.accent.withOpacity(0.3),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.accent.withOpacity(0.2),
-                      borderRadius:
-                          BorderRadius.circular(AppDimensions.radiusSm),
-                    ),
-                    child: const Icon(
-                      Icons.verified_rounded,
-                      color: AppColors.accentDark,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Bukti Pengiriman',
-                          style: TextStyle(
-                            fontFamily: 'PlusJakartaSans',
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.accentDark,
-                          ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Spacer(),
+                      Text(
+                        msg['time'],
+                        style: const TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textSecondary,
                         ),
-                        Text(
-                          message['message'] as String,
-                          style: const TextStyle(
-                            fontFamily: 'PlusJakartaSans',
-                            fontSize: 11,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
+                      ),
+                      if (isMe) ...[
+                        const SizedBox(width: 4),
+                        _buildReadReceipt(msg['status'] ?? 1),
                       ],
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -398,105 +189,83 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
-  Widget _buildInputBar() {
+  Widget _buildReadReceipt(int status) {
+    switch (status) {
+      case 2:
+        return const Icon(Icons.done_all, size: 14, color: Colors.grey);
+      case 3:
+        return const Icon(Icons.done_all, size: 14, color: Colors.blue);
+      default:
+        return const Icon(Icons.check, size: 14, color: Colors.grey);
+    }
+  }
+
+  Widget _buildInputArea() {
     return Container(
       padding: EdgeInsets.fromLTRB(
-        AppDimensions.base,
-        AppDimensions.sm,
-        AppDimensions.base,
-        MediaQuery.of(context).padding.bottom + AppDimensions.sm,
+        16, 
+        10, 
+        16, 
+        MediaQuery.of(context).padding.bottom + 10
       ),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, -2),
-          ),
-        ],
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(
+          top: BorderSide(color: AppColors.black, width: 2),
+        ),
       ),
       child: Row(
         children: [
-          // Attachment button
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-            ),
-            child: PopupMenuButton<String>(
-              icon: const Icon(
-                Icons.attach_file_rounded,
-                color: AppColors.textSecondary,
-                size: 20,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-              ),
-              onSelected: (value) {
-                // TODO: Handle attachment
-              },
-              itemBuilder: (context) => [
-                _buildPopupItem(Icons.image_outlined, 'Foto', 'image'),
-                _buildPopupItem(Icons.camera_alt_outlined, 'Kamera', 'camera'),
-                _buildPopupItem(Icons.verified_outlined, 'Bukti Kirim', 'proof'),
-              ],
-            ),
-          ),
-          const SizedBox(width: AppDimensions.sm),
-
-          // Text input
+          // Attachment Button
+          _buildMultimediaButton(Icons.add, () {}),
+          const SizedBox(width: 8),
+          
           Expanded(
             child: Container(
-              height: 42,
               decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
-                borderRadius: BorderRadius.circular(AppDimensions.radiusFull),
+                color: Colors.white,
+                border: Border.all(color: AppColors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppColors.black,
+                    offset: Offset(2, 2),
+                  ),
+                ],
               ),
               child: TextField(
                 controller: _messageController,
-                style: const TextStyle(
-                  fontFamily: 'PlusJakartaSans',
-                  fontSize: 14,
-                ),
                 decoration: const InputDecoration(
                   hintText: 'Tulis pesan...',
+                  hintStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 13),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  hintStyle: TextStyle(
-                    fontFamily: 'PlusJakartaSans',
-                    fontSize: 14,
-                    color: AppColors.textTertiary,
-                  ),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: AppDimensions.sm),
+          const SizedBox(width: 8),
+          
+          // Voice Note Button
+          _buildMultimediaButton(Icons.mic, () {}, color: const Color(0xFFFFD54F)),
+          const SizedBox(width: 8),
 
-          // Send button
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.3),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
-              onPressed: _sendMessage,
+          // Send Button
+          BrutalistBounce(
+            onTap: _sendMessage,
+            child: Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: const Color(0xFFB4E600), // Neon Green
+                border: Border.all(color: AppColors.black, width: 2.0),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppColors.black,
+                    offset: Offset(2, 2),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.send_rounded, color: AppColors.black, size: 20),
             ),
           ),
         ],
@@ -504,39 +273,42 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
     );
   }
 
-  PopupMenuItem<String> _buildPopupItem(
-    IconData icon, String label, String value,
-  ) {
-    return PopupMenuItem(
-      value: value,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppColors.textSecondary),
-          const SizedBox(width: 10),
-          Text(label, style: AppTextStyles.bodyMedium),
-        ],
+  Widget _buildMultimediaButton(IconData icon, VoidCallback onTap, {Color color = Colors.white}) {
+    return BrutalistBounce(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 44,
+        decoration: BoxDecoration(
+          color: color,
+          border: Border.all(color: AppColors.black, width: 2.0),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.black,
+              offset: Offset(2, 2),
+            ),
+          ],
+        ),
+        child: Icon(icon, color: AppColors.black, size: 20),
       ),
     );
   }
 
   void _sendMessage() {
-    final text = _messageController.text.trim();
-    if (text.isEmpty) return;
-
+    if (_messageController.text.trim().isEmpty) return;
+    
     setState(() {
       _messages.add({
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+        'id': DateTime.now().toString(),
         'senderId': _currentUserId,
-        'senderName': 'John Doe',
-        'type': 'text',
-        'message': text,
-        'createdAt': DateTime.now().toIso8601String(),
+        'senderName': 'Me',
+        'message': _messageController.text,
+        'time': '${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}',
+        'status': 1, // Sent
       });
+      _messageController.clear();
     });
 
-    _messageController.clear();
-
-    // Scroll to bottom
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -547,9 +319,6 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
       }
     });
   }
-
-  String _formatTime(String iso) {
-    final dt = DateTime.parse(iso);
-    return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  }
 }
+
+
