@@ -18,7 +18,7 @@ class _AutoScrollBannerState extends State<AutoScrollBanner> {
   final List<Map<String, dynamic>> _banners = [
     {
       'color': AppColors.mustardYellow,
-      'text': 'Awas Hackback! Amankan data sebelum klik Selesai.',
+      'text': 'Awas Hackback! \nAmankan data sebelum klik Selesai.',
       'textColor': AppColors.black,
       'icon': Icons.security,
       'iconBg': AppColors.deepPurple,
@@ -26,7 +26,7 @@ class _AutoScrollBannerState extends State<AutoScrollBanner> {
     },
     {
       'color': const Color(0xFF81D4FA), // Cyan
-      'text': 'Wajib Video Unboxing! Syarat mutlak klaim garansi.',
+      'text': 'Wajib Video Unboxing! \n Syarat mutlak klaim garansi.',
       'textColor': AppColors.black,
       'icon': Icons.inventory_2,
       'iconBg': AppColors.mustardYellow,
@@ -34,7 +34,7 @@ class _AutoScrollBannerState extends State<AutoScrollBanner> {
     },
     {
       'color': const Color(0xFFFF2E63), // Pink/Red
-      'text': 'Admin Pantang Minta OTP/Password. Hati-hati Penipuan!',
+      'text': 'Penjual Pantang Minta Password. \n Hati-hati Penipuan!',
       'textColor': Colors.white,
       'icon': Icons.warning_amber_rounded,
       'iconBg': AppColors.neonGreen,
@@ -42,7 +42,7 @@ class _AutoScrollBannerState extends State<AutoScrollBanner> {
     },
     {
       'color': const Color(0xFFB4E600), // Green
-      'text': 'Cek File Jasamu! Pastikan tuntas sebelum dana cair.',
+      'text': 'Cek File Jasamu! \n Pastikan tuntas sebelum dana cair.',
       'textColor': AppColors.black,
       'icon': Icons.handshake_rounded,
       'iconBg': const Color(0xFFFF6B6B),
