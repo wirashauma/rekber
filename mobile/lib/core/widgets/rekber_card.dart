@@ -29,7 +29,7 @@ class RekberCard extends StatelessWidget {
         border: Border.all(color: AppColors.border, width: 0.5),
         boxShadow: [
           BoxShadow(
-            color: AppColors.textPrimary.withOpacity(0.04),
+            color: AppColors.textPrimary.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
