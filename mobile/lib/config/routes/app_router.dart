@@ -14,6 +14,10 @@ import '../../features/transaction/presentation/pages/input_kode_page.dart';
 import '../../features/transaction/presentation/pages/history_page.dart';
 import '../../features/home/presentation/pages/kalkulator_page.dart';
 import '../../features/home/presentation/pages/help_page.dart';
+import '../../features/settings/presentation/pages/edit_profile_screen.dart';
+import '../../features/settings/presentation/pages/kyc_screen.dart';
+import '../../features/settings/presentation/pages/help_center_screen.dart';
+import '../../features/settings/presentation/pages/security_screen.dart';
 
 /// REKBER App Router — GoRouter configuration
 class AppRouter {
@@ -101,6 +105,28 @@ class AppRouter {
         path: '/ai-assistant',
         name: 'ai-assistant',
         builder: (context, state) => const AiAssistantScreen(),
+      ),
+
+      // ── Settings Sub-Screens ──
+      GoRoute(
+        path: '/edit-profile',
+        name: 'edit-profile',
+        builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: '/kyc',
+        name: 'kyc',
+        builder: (context, state) => const KycScreen(),
+      ),
+      GoRoute(
+        path: '/help-center',
+        name: 'help-center',
+        builder: (context, state) => const HelpCenterScreen(),
+      ),
+      GoRoute(
+        path: '/security',
+        name: 'security',
+        builder: (context, state) => const SecurityScreen(),
       ),
     ],
 
