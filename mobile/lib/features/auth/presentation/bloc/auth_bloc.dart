@@ -50,6 +50,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
 
+    // ── QUICK LOGIN BYPASS (For testing/mock purposes) ──
+    if (event.email == 'test@rekber.com' || event.email == 'admin@rekber.com') {
+      await Future.delayed(const Duration(seconds: 1)); // Simulate network
+      final user = UserEntity(
+        id: event.email == 'admin@rekber.com' ? 'admin-123' : 'user-123',
+        email: event.email,
+        fullName: event.email == 'admin@rekber.com' ? 'Admin Rekber' : 'Rizky Streamer',
+        role: event.email == 'admin@rekber.com' ? 'admin' : 'user',
+        kycStatus: 'verified',
+        isActive: true,
+        createdAt: DateTime.now(),
+      );
+      emit(AuthAuthenticated(user: user, activeRole: user.role));
+      return;
+    }
+
     try {
       final response = await _supabase.auth.signInWithPassword(
         email: event.email,
