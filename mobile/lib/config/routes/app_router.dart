@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
 import '../../features/home/presentation/pages/main_wrapper.dart';
+import '../../features/chat/presentation/pages/ai_assistant_screen.dart';
+
 import '../../features/home/presentation/pages/notification_page.dart';
 import '../../features/transaction/presentation/pages/transaction_detail_page.dart';
 import '../../features/chat/presentation/pages/chat_room_page.dart';
@@ -94,6 +96,11 @@ class AppRouter {
         path: '/chat-room',
         name: 'chat-room',
         builder: (context, state) => const ChatRoomPage(),
+      ),
+      GoRoute(
+        path: '/ai-assistant',
+        name: 'ai-assistant',
+        builder: (context, state) => const AiAssistantScreen(),
       ),
     ],
 
