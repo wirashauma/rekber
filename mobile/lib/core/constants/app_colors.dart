@@ -1,73 +1,64 @@
 import 'package:flutter/material.dart';
 
-/// REKBER Design System - Color Palette
-/// Inspired by Kupa reference app with escrow-specific adaptations
+/// REKBER Design System - Neo-Brutalism (Saweria Style)
 class AppColors {
   AppColors._();
 
-  // ── Primary (Deep Emerald Green) ──
-  static const Color primary = Color(0xFF1B5E37);
-  static const Color primaryLight = Color(0xFF2D7A4A);
-  static const Color primaryDark = Color(0xFF0F3D22);
-  static const Color primarySurface = Color(0xFFE8F5EC);
+  // ── Core Neo-Brutalism Palette ──
+  static const Color primary = deepPurple; // Deep Purple
+  static const Color secondary = neonGreen; // Neon Green
+  static const Color accent = neonGreen; // Neon Green
+  
+  // ── Multi-Color Neo-Brutalist Palette ──
+  static const Color deepPurple = Color(0xFF6236FF);
+  static const Color mustardYellow = Color(0xFFFFD500);
+  static const Color brightBlue = Color(0xFF4169E1);
+  static const Color neonGreen = Color(0xFF39FF14);
+  static const Color hotPink = Color(0xFFFF6B6B);
+  static const Color paleYellow = Color(0xFFFFF9C4);
+  static const Color lightBlue = Color(0xFFB3E5FC);
 
-  // ── Accent (Gold - for money/escrow highlights) ──
-  static const Color accent = Color(0xFFD4A844);
-  static const Color accentLight = Color(0xFFF5E6C4);
-  static const Color accentDark = Color(0xFFB8892E);
+  static const Color black = Color(0xFF000000); // Stark Black
+  static const Color white = Color(0xFFFFFFFF); // Pure White
+  static const Color background = Color(0xFFF8F9FA); // Off-white/Light Gray
+  
+  static const Color border = Color(0xFF121212); // Thick Black Borders
+  static const Color shadow = Color(0xFF121212); // Solid Hard Shadows
 
-  // ── Neutral ──
-  static const Color background = Color(0xFFF8F9FA);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF1F3F5);
-  static const Color border = Color(0xFFE0E3E7);
-  static const Color divider = Color(0xFFEEF0F2);
+  // ── Compatibility Aliases (Mapping old names to new style) ──
+  static const Color surface = white;
+  static const Color surfaceVariant = background;
+  static const Color primarySurface = primary;
+  static const Color accentLight = accent;
+  static const Color accentDark = accent;
 
   // ── Text ──
-  static const Color textPrimary = Color(0xFF1A1D21);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textTertiary = Color(0xFF9CA3AF);
-  static const Color textOnPrimary = Color(0xFFFFFFFF);
-  static const Color textOnAccent = Color(0xFF1A1D21);
+  static const Color textPrimary = black;
+  static const Color textSecondary = Color(0xFF4A4A4A);
+  static const Color textTertiary = Color(0xFF757575);
+  static const Color textOnPrimary = black;
+  static const Color textOnSecondary = white;
+  static const Color textOnBlack = white;
 
-  // ── Status Colors ──
-  static const Color success = Color(0xFF22C55E);
-  static const Color successLight = Color(0xFFDCFCE7);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color warningLight = Color(0xFFFEF3C7);
-  static const Color error = Color(0xFFEF4444);
-  static const Color errorLight = Color(0xFFFEE2E2);
-  static const Color info = Color(0xFF3B82F6);
-  static const Color infoLight = Color(0xFFDBEAFE);
+  // ── Status Colors (Solid) ──
+  static const Color success = Color(0xFF2ECC71);
+  static const Color warning = Color(0xFFF1C40F);
+  static const Color error = Color(0xFFE74C3C);
+  static const Color info = Color(0xFF3498DB);
 
   // ── Transaction Status Colors ──
-  static const Color statusAwaitingPayment = Color(0xFFF59E0B);
-  static const Color statusEscrow = Color(0xFF3B82F6);
-  static const Color statusProcessed = Color(0xFF8B5CF6);
-  static const Color statusShipped = Color(0xFF06B6D4);
-  static const Color statusCompleted = Color(0xFF22C55E);
-  static const Color statusDisputed = Color(0xFFEF4444);
-  static const Color statusRefunded = Color(0xFF6B7280);
-  static const Color statusCancelled = Color(0xFF9CA3AF);
+  static const Color statusAwaitingPayment = Color(0xFFFF9F43);
+  static const Color statusEscrow = Color(0xFF54a0ff);
+  static const Color statusProcessed = Color(0xFF5f27cd);
+  static const Color statusCompleted = Color(0xFF10ac84);
+  static const Color statusDisputed = Color(0xFFee5253);
+  static const Color statusShipped = Color(0xFF00d2d3);
 
-  // ── Gradient Definitions ──
+  // ── Gradient Definitions (Compatibility) ──
   static const LinearGradient primaryGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [primary, primaryLight],
+    colors: [primary, primary],
   );
-
-  static const LinearGradient accentGradient = LinearGradient(
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-    colors: [accent, accentLight],
-  );
-
-  static const LinearGradient heroGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [primary, Color(0xFF245E3A), primaryLight],
-  );
+  static const LinearGradient heroGradient = primaryGradient;
 
   /// Get color for transaction status
   static Color getStatusColor(String status) {
@@ -78,23 +69,19 @@ class AppColors {
         return statusEscrow;
       case 'processed':
         return statusProcessed;
-      case 'shipped':
-        return statusShipped;
       case 'completed':
         return statusCompleted;
       case 'disputed':
         return statusDisputed;
-      case 'refunded':
-        return statusRefunded;
-      case 'cancelled':
-        return statusCancelled;
+      case 'shipped':
+        return statusShipped;
       default:
-        return textTertiary;
+        return textSecondary;
     }
   }
 
   /// Get light background for transaction status
   static Color getStatusBackgroundColor(String status) {
-    return getStatusColor(status).withOpacity(0.12);
+    return getStatusColor(status).withValues(alpha: 0.2);
   }
 }
