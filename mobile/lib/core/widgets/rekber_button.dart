@@ -62,14 +62,14 @@ class RekberButton extends StatelessWidget {
               ? AppColors.primaryGradient
               : null,
           color: onPressed == null || isLoading
-              ? AppColors.textTertiary.withOpacity(0.3)
+              ? AppColors.textTertiary.withValues(alpha: 0.3)
               : backgroundColor,
           borderRadius: BorderRadius.circular(AppDimensions.radiusLg),
           boxShadow: onPressed != null && !isLoading
               ? [
                   BoxShadow(
                     color: (backgroundColor ?? AppColors.primary)
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
