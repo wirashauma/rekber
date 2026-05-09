@@ -4,7 +4,6 @@ import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../../core/widgets/rekber_button.dart';
-import '../../../../core/widgets/rekber_card.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../transaction/domain/services/escrow_state_machine.dart';
 
@@ -74,7 +73,7 @@ class TransactionDetailPage extends StatelessWidget {
         color: AppColors.getStatusBackgroundColor(status),
         borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
         border: Border.all(
-          color: AppColors.getStatusColor(status).withOpacity(0.3),
+          color: AppColors.getStatusColor(status).withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -83,7 +82,7 @@ class TransactionDetailPage extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: AppColors.getStatusColor(status).withOpacity(0.15),
+              color: AppColors.getStatusColor(status).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(AppDimensions.radiusMd),
             ),
             child: Icon(
@@ -116,7 +115,7 @@ class TransactionDetailPage extends StatelessWidget {
   }
 
   Widget _buildProgressStepper(String currentStatus) {
-    final steps = EscrowStateMachine.statusOrder;
+    const steps = EscrowStateMachine.statusOrder;
     final currentIndex = EscrowStateMachine.getStepIndex(currentStatus);
 
     return Container(
@@ -157,7 +156,7 @@ class TransactionDetailPage extends StatelessWidget {
                         boxShadow: isCurrent
                             ? [
                                 BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.3),
+                                  color: AppColors.primary.withValues(alpha: 0.3),
                                   blurRadius: 8,
                                 )
                               ]
