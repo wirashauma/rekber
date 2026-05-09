@@ -4,6 +4,7 @@
 /// Handles all transaction state transitions with validation,
 /// ensuring the escrow lifecycle is enforced correctly.
 /// ============================================================
+library;
 
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
