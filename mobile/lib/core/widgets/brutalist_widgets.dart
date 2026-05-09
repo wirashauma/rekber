@@ -388,3 +388,62 @@ class _AnimatedBrutalButtonState extends State<AnimatedBrutalButton> with Single
     );
   }
 }
+
+/// Brutalist Text Field — High contrast input with thick borders
+class BrutalistTextField extends StatelessWidget {
+  final String hintText;
+  final IconData prefixIcon;
+  final bool obscureText;
+  final TextEditingController? controller;
+  final TextInputType keyboardType;
+  final String? Function(String?)? validator;
+
+  const BrutalistTextField({
+    super.key,
+    required this.hintText,
+    required this.prefixIcon,
+    this.obscureText = false,
+    this.controller,
+    this.keyboardType = TextInputType.text,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.white,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: AppColors.black, width: 2.5),
+        boxShadow: const [
+          BoxShadow(
+            color: AppColors.black,
+            offset: Offset(4, 4),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        validator: validator,
+        style: const TextStyle(
+          fontWeight: FontWeight.bold,
+          color: AppColors.black,
+        ),
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(
+            color: AppColors.black.withValues(alpha: 0.5),
+            fontWeight: FontWeight.bold,
+          ),
+          prefixIcon: Icon(prefixIcon, color: AppColors.black),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        ),
+      ),
+    );
+  }
+}
+
