@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:rekber/core/constants/app_colors.dart';
 import 'package:rekber/core/widgets/brutalist_widgets.dart';
 import 'home_page.dart';
@@ -6,6 +8,10 @@ import '../../../../core/constants/app_text_styles.dart';
 import '../../../transaction/presentation/pages/create_room_page.dart';
 import '../../../transaction/presentation/pages/history_page.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
+import '../../../chat/presentation/pages/ai_assistant_screen.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -17,14 +23,6 @@ class MainWrapper extends StatefulWidget {
 class _MainWrapperState extends State<MainWrapper> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    const HomePage(),
-    const HistoryPage(), // Temporary "Transaksi" page
-    const CreateRoomPage(), // FAB page
-    const Center(child: Text('AI Feature Coming Soon!', style: AppTextStyles.h2)), // AI Placeholder
-    const SettingsPage(),
-  ];
-
   void _onItemTapped(int index) {
     if (_currentIndex == index) return;
     setState(() {
@@ -34,15 +32,82 @@ class _MainWrapperState extends State<MainWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final role = (state is AuthAuthenticated) ? state.activeRole : 'user';
+        
+        final List<Widget> pages = [
+          role == 'admin' ? _buildAdminDashboard() : const HomePage(),
+          const HistoryPage(), // Temporary "Transaksi" page
+          const CreateRoomPage(), // FAB page
+          const AiAssistantScreen(),
+          const SettingsPage(),
+        ];
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: IndexedStack(
+            index: _currentIndex,
+            children: pages,
+          ),
+          bottomNavigationBar: _BrutalistBottomNav(
+            currentIndex: _currentIndex,
+            onTap: _onItemTapped,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildAdminDashboard() {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
-      ),
-      bottomNavigationBar: _BrutalistBottomNav(
-        currentIndex: _currentIndex,
-        onTap: _onItemTapped,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('ADMIN PANEL 🛠️', style: AppTextStyles.h1),
+              const SizedBox(height: 8),
+              const Text('Kelola transaksi dan sengketa di sini.', style: AppTextStyles.bodyMedium),
+              const SizedBox(height: 32),
+              Expanded(
+                child: Center(
+                  child: BrutalistCard(
+                    backgroundColor: AppColors.paleYellow,
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.admin_panel_settings_rounded, size: 80, color: AppColors.black),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Dashboard Admin\nSedang Dikembangkan',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        BrutalistButton(
+                          text: 'LOGOUT',
+                          backgroundColor: AppColors.hotPink,
+                          textColor: AppColors.white,
+                          onPressed: () {
+                            context.read<AuthBloc>().add(AuthLogoutRequested());
+                            context.go('/login');
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
