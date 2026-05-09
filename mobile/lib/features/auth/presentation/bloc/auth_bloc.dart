@@ -73,7 +73,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } on AuthException catch (e) {
       emit(AuthError(message: _getAuthErrorMessage(e.message)));
     } catch (e) {
-      emit(AuthError(message: 'Terjadi kesalahan. Coba lagi nanti.'));
+      emit(const AuthError(message: 'Terjadi kesalahan. Coba lagi nanti.'));
     }
   }
 
@@ -113,7 +113,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } on AuthException catch (e) {
       emit(AuthError(message: _getAuthErrorMessage(e.message)));
     } catch (e) {
-      emit(AuthError(message: 'Registrasi gagal. Coba lagi nanti.'));
+      emit(const AuthError(message: 'Registrasi gagal. Coba lagi nanti.'));
     }
   }
 
