@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
@@ -39,7 +40,6 @@ class SettingsPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(Icons.edit_rounded, color: AppColors.black),
                 ],
               ),
             ),
@@ -49,23 +49,23 @@ class SettingsPage extends StatelessWidget {
             _settingsItem(
               title: 'Edit Profile',
               icon: Icons.person_outline_rounded,
-              onTap: () {},
+              onTap: () => context.push('/edit-profile'),
             ),
             _settingsItem(
               title: 'KYC Status',
               icon: Icons.verified_user_outlined,
               badge: _buildKYCBadge(true),
-              onTap: () {},
+              onTap: () => context.push('/kyc'),
             ),
             _settingsItem(
               title: 'Pusat Bantuan',
               icon: Icons.help_outline_rounded,
-              onTap: () {},
+              onTap: () => context.push('/help-center'),
             ),
             _settingsItem(
               title: 'Keamanan Akun',
               icon: Icons.lock_outline_rounded,
-              onTap: () {},
+              onTap: () => context.push('/security'),
             ),
             const SizedBox(height: 24),
             
