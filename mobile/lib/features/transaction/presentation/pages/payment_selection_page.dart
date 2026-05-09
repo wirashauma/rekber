@@ -86,7 +86,7 @@ class _PaymentSelectionPageState extends State<PaymentSelectionPage> {
         borderRadius: BorderRadius.circular(AppDimensions.radiusXl),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withValues(alpha: 0.3),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -208,7 +208,7 @@ class _PaymentSelectionPageState extends State<PaymentSelectionPage> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: AppColors.primary.withOpacity(0.1),
+                    color: AppColors.primary.withValues(alpha: 0.1),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   )
@@ -221,7 +221,7 @@ class _PaymentSelectionPageState extends State<PaymentSelectionPage> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1),
+                color: iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(AppDimensions.radiusSm),
               ),
               child: Icon(icon, color: iconColor, size: 24),
@@ -267,7 +267,7 @@ class _PaymentSelectionPageState extends State<PaymentSelectionPage> {
         color: AppColors.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, -2),
           ),
