@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_dimensions.dart';
-import '../../../../core/constants/app_text_styles.dart';
-import '../../../../core/widgets/rekber_button.dart';
-import '../../../../core/widgets/rekber_text_field.dart';
+import '../../../../core/widgets/brutalist_widgets.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
 
-/// Register Page — Clean sign-up form matching Kupa reference
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -17,44 +15,24 @@ class RegisterPage extends StatefulWidget {
   State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends State<RegisterPage>
-    with SingleTickerProviderStateMixin {
+class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _agreeTerms = false;
-
-  late AnimationController _animController;
-  late Animation<double> _fadeAnim;
-
-  @override
-  void initState() {
-    super.initState();
-    _animController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _fadeAnim = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animController, curve: Curves.easeOut),
-    );
-    _animController.forward();
-  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     _passwordController.dispose();
-    _animController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF4F4F4),
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthRegistrationSuccess) {
@@ -62,200 +40,147 @@ class _RegisterPageState extends State<RegisterPage>
               SnackBar(
                 content: Text(state.message),
                 backgroundColor: AppColors.success,
-                behavior: SnackBarBehavior.floating,
               ),
             );
-            Navigator.of(context).pop();
-          } else if (state is AuthError) {
+            context.go('/login');
+          }
+          if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(state.message),
+                content: Text(state.message, style: const TextStyle(fontWeight: FontWeight.bold)),
                 backgroundColor: AppColors.error,
-                behavior: SnackBarBehavior.floating,
               ),
             );
           }
         },
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppDimensions.xl),
-            child: FadeTransition(
-              opacity: _fadeAnim,
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: AppDimensions.lg),
-
-                    // Back button
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      child: Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(
-                            AppDimensions.radiusMd,
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 40.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                BrutalistBounce(
+                  onTap: () => context.pop(),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      border: Border.all(color: AppColors.black, width: 2),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: AppColors.black,
+                          offset: Offset(2, 2),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.arrow_back, color: AppColors.black),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  'Buat Akun Baru 🚀',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Daftar untuk mulai bertransaksi aman.',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      BrutalistTextField(
+                        controller: _nameController,
+                        hintText: 'Nama Lengkap',
+                        prefixIcon: Icons.person_outline,
+                      ),
+                      const SizedBox(height: 16),
+                      BrutalistTextField(
+                        controller: _emailController,
+                        hintText: 'Masukkan Email',
+                        prefixIcon: Icons.email_outlined,
+                        keyboardType: TextInputType.emailAddress,
+                      ),
+                      const SizedBox(height: 16),
+                      BrutalistTextField(
+                        controller: _passwordController,
+                        hintText: 'Masukkan Password',
+                        prefixIcon: Icons.lock_outline,
+                        obscureText: true,
+                      ),
+                      const SizedBox(height: 40),
+                      BlocBuilder<AuthBloc, AuthState>(
+                        builder: (context, state) {
+                          return BrutalistBounce(
+                            onTap: _onRegister,
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              decoration: BoxDecoration(
+                                color: AppColors.deepPurple,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: AppColors.black, width: 2.5),
+                                boxShadow: const [
+                                  BoxShadow(
+                                    color: AppColors.black,
+                                    offset: Offset(4, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: state is AuthLoading
+                                    ? const CircularProgressIndicator(color: AppColors.white)
+                                    : Text(
+                                        'DAFTAR SEKARANG',
+                                        style: GoogleFonts.spaceGrotesk(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 16,
+                                          color: AppColors.white,
+                                          letterSpacing: 1.2,
+                                        ),
+                                      ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 40),
+                Center(
+                  child: TextButton(
+                    onPressed: () => context.pop(),
+                    child: RichText(
+                      text: TextSpan(
+                        text: 'Sudah punya akun? ',
+                        style: GoogleFonts.spaceGrotesk(color: Colors.grey[700], fontSize: 14),
+                        children: [
+                          TextSpan(
+                            text: 'Masuk di sini',
+                            style: GoogleFonts.spaceGrotesk(
+                              color: AppColors.black,
+                              fontWeight: FontWeight.w900,
+                              decoration: TextDecoration.underline,
+                            ),
                           ),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          size: 18,
-                          color: AppColors.textPrimary,
-                        ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: AppDimensions.xl),
-
-                    const Text('Buat Akun 🔐', style: AppTextStyles.h2),
-                    const SizedBox(height: AppDimensions.xs),
-                    const Text(
-                      'Daftar untuk mulai bertransaksi dengan aman',
-                      style: AppTextStyles.bodyMedium,
-                    ),
-                    const SizedBox(height: AppDimensions.xxl),
-
-                    // Name
-                    RekberTextField(
-                      label: 'Nama Lengkap',
-                      hint: 'Masukkan nama lengkap',
-                      controller: _nameController,
-                      prefixIcon: const Icon(Icons.person_outline_rounded, size: 20),
-                      textInputAction: TextInputAction.next,
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'Nama wajib diisi' : null,
-                    ),
-                    const SizedBox(height: AppDimensions.base),
-
-                    // Email
-                    RekberTextField(
-                      label: 'Email',
-                      hint: 'contoh@email.com',
-                      controller: _emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      prefixIcon: const Icon(Icons.email_outlined, size: 20),
-                      textInputAction: TextInputAction.next,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Email wajib diisi';
-                        if (!v.contains('@')) return 'Email tidak valid';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: AppDimensions.base),
-
-                    // Phone
-                    RekberTextField(
-                      label: 'No. Handphone',
-                      hint: '08xxxxxxxxxx',
-                      controller: _phoneController,
-                      keyboardType: TextInputType.phone,
-                      prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-                      textInputAction: TextInputAction.next,
-                      validator: (v) =>
-                          (v == null || v.isEmpty) ? 'No. HP wajib diisi' : null,
-                    ),
-                    const SizedBox(height: AppDimensions.base),
-
-                    // Password
-                    RekberTextField(
-                      label: 'Password',
-                      hint: 'Minimal 6 karakter',
-                      controller: _passwordController,
-                      obscureText: true,
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
-                      textInputAction: TextInputAction.done,
-                      validator: (v) {
-                        if (v == null || v.isEmpty) return 'Password wajib diisi';
-                        if (v.length < 6) return 'Password minimal 6 karakter';
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: AppDimensions.lg),
-
-                    // Terms & Conditions
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: Checkbox(
-                            value: _agreeTerms,
-                            onChanged: (v) =>
-                                setState(() => _agreeTerms = v ?? false),
-                            activeColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: AppDimensions.sm),
-                        Expanded(
-                          child: RichText(
-                            text: TextSpan(
-                              style: AppTextStyles.bodySmall,
-                              children: [
-                                const TextSpan(text: 'Dengan mendaftar, saya menyetujui '),
-                                TextSpan(
-                                  text: 'Syarat & Ketentuan',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                const TextSpan(text: ' dan '),
-                                TextSpan(
-                                  text: 'Kebijakan Privasi',
-                                  style: AppTextStyles.bodySmall.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppDimensions.xl),
-
-                    // Register button
-                    BlocBuilder<AuthBloc, AuthState>(
-                      builder: (context, state) {
-                        return RekberButton(
-                          text: 'Daftar',
-                          isLoading: state is AuthLoading,
-                          onPressed: _agreeTerms ? _onRegister : null,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: AppDimensions.xl),
-
-                    // Login link
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Sudah punya akun? ',
-                          style: AppTextStyles.bodyMedium,
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.of(context).pop(),
-                          child: Text(
-                            'Masuk',
-                            style: AppTextStyles.labelLarge.copyWith(
-                              color: AppColors.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppDimensions.xxl),
-                  ],
+                  ),
                 ),
-              ),
+                const SizedBox(height: 20),
+              ],
             ),
           ),
         ),
@@ -269,8 +194,9 @@ class _RegisterPageState extends State<RegisterPage>
             email: _emailController.text.trim(),
             password: _passwordController.text,
             fullName: _nameController.text.trim(),
-            phone: _phoneController.text.trim(),
+            phone: '', // Optional or add field if needed
           ));
     }
   }
 }
+
