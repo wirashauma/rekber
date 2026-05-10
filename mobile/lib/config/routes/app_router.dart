@@ -90,6 +90,14 @@ class AppRouter {
         builder: (context, state) => const BuatRoomScreen(),
       ),
 
+      GoRoute(
+        path: '/detail-pembayaran',
+        name: 'detail-pembayaran',
+        builder: (context, state) {
+          final data = state.extra as Map<String, dynamic>;
+          return DetailPembayaranScreen(data: data);
+        },
+      ),
       // ── Transaction Routes ──
       GoRoute(
         path: '/transaction/:id',
