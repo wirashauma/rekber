@@ -18,6 +18,8 @@ import '../../features/settings/presentation/pages/edit_profile_screen.dart';
 import '../../features/settings/presentation/pages/kyc_screen.dart';
 import '../../features/settings/presentation/pages/help_center_screen.dart';
 import '../../features/settings/presentation/pages/security_screen.dart';
+import '../../features/settings/presentation/pages/legal_screen.dart';
+import '../../features/transaction/presentation/pages/buat_room_screen.dart';
 
 /// REKBER App Router — GoRouter configuration
 class AppRouter {
@@ -82,6 +84,11 @@ class AppRouter {
         name: 'bantuan',
         builder: (context, state) => const HelpCenterScreen(),
       ),
+      GoRoute(
+        path: '/buat-room',
+        name: 'buat-room',
+        builder: (context, state) => const BuatRoomScreen(),
+      ),
 
       // ── Transaction Routes ──
       GoRoute(
@@ -127,6 +134,11 @@ class AppRouter {
         path: '/security',
         name: 'security',
         builder: (context, state) => const SecurityScreen(),
+      ),
+      GoRoute(
+        path: '/legal',
+        name: 'legal',
+        builder: (context, state) => const LegalScreen(),
       ),
     ],
 
