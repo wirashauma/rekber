@@ -6,6 +6,8 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
+import '../../../../core/widgets/brutal_skeleton.dart';
+
 class BuatRoomScreen extends StatefulWidget {
   const BuatRoomScreen({super.key});
 
@@ -22,6 +24,7 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
 
   double _nominal = 0;
   double _fee = 0;
+  bool isLoading = true;
 
   final List<String> _categories = [
     "Akun Game",
@@ -38,6 +41,11 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
   void initState() {
     super.initState();
     _amountController.addListener(_updateCalculations);
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
   }
 
   @override
@@ -150,7 +158,14 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
+        child: isLoading 
+          ? Column(
+              children: List.generate(6, (index) => const Padding(
+                padding: EdgeInsets.only(bottom: 24),
+                child: BrutalSkeleton(width: double.infinity, height: 80),
+              )),
+            )
+          : Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 1. Transaction Position
@@ -163,14 +178,14 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
                 _buildBrutalChip(
                   label: 'Sebagai Penjual',
                   isSelected: _peran == 'Penjual',
-                  selectedColor: const Color(0xFF00FFFF), // Cyan
+                  selectedColor: AppColors.tealGreen,
                   onTap: () => setState(() => _peran = 'Penjual'),
                 ),
                 const SizedBox(width: 12),
                 _buildBrutalChip(
                   label: 'Sebagai Pembeli',
                   isSelected: _peran == 'Pembeli',
-                  selectedColor: const Color(0xFF00FFFF), // Cyan
+                  selectedColor: AppColors.tealGreen,
                   onTap: () => setState(() => _peran = 'Pembeli'),
                 ),
               ],
@@ -257,7 +272,7 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
                 _buildBrutalChip(
                   label: 'Pembeli',
                   isSelected: _feePayer == 'Pembeli',
-                  selectedColor: const Color(0xFFFF00FF), // Pink
+                  selectedColor: AppColors.tealGreen,
                   onTap: () => setState(() => _feePayer = 'Pembeli'),
                   compact: true,
                 ),
@@ -265,7 +280,7 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
                 _buildBrutalChip(
                   label: 'Penjual',
                   isSelected: _feePayer == 'Penjual',
-                  selectedColor: const Color(0xFFFF00FF), // Pink
+                  selectedColor: AppColors.tealGreen,
                   onTap: () => setState(() => _feePayer = 'Penjual'),
                   compact: true,
                 ),
@@ -273,7 +288,7 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
                 _buildBrutalChip(
                   label: '50:50',
                   isSelected: _feePayer == 'Dibagi Dua',
-                  selectedColor: const Color(0xFFFF00FF), // Pink
+                  selectedColor: AppColors.tealGreen,
                   onTap: () => setState(() => _feePayer = 'Dibagi Dua'),
                   compact: true,
                 ),
@@ -322,32 +337,12 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
             ),
             const SizedBox(height: 32),
 
-            BrutalistCard(
-              backgroundColor: AppColors.secondary, // Neon Green
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.shield_rounded, color: Colors.black),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Transaksi aman dengan sistem Rekber. Dana akan dijaga sampai barang/jasa diterima.',
-                      style: GoogleFonts.spaceGrotesk(
-                        color: Colors.black, 
-                        fontSize: 12, 
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 32),
 
             // 5. Action Button
             BrutalistButton(
               text: 'BUAT RUANG & GENERATE KODE',
-              backgroundColor: AppColors.primary,
+              backgroundColor: AppColors.tealGreen,
               onPressed: _showSuccessDialog,
             ),
             const SizedBox(height: 80), 
