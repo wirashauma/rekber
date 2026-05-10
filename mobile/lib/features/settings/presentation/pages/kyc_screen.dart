@@ -2,9 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 
-class KycScreen extends StatelessWidget {
+class KycScreen extends StatefulWidget {
   const KycScreen({super.key});
+
+  @override
+  State<KycScreen> createState() => _KycScreenState();
+}
+
+class _KycScreenState extends State<KycScreen> {
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -39,39 +57,41 @@ class KycScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Status Banner
-            BrutalistCard(
-              backgroundColor: AppColors.mustardYellow,
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.info_outline_rounded, color: AppColors.black, size: 28),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            isLoading
+                ? const BrutalSkeleton(width: double.infinity, height: 80)
+                : BrutalistCard(
+                    backgroundColor: AppColors.mustardYellow,
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
                       children: [
-                        Text(
-                          "BELUM VERIFIKASI",
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            color: AppColors.black,
-                          ),
-                        ),
-                        Text(
-                          "Verifikasi KTP untuk transaksi lebih aman.",
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                            color: AppColors.black,
+                        const Icon(Icons.info_outline_rounded, color: AppColors.black, size: 28),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "BELUM VERIFIKASI",
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 16,
+                                  color: AppColors.black,
+                                ),
+                              ),
+                              Text(
+                                "Verifikasi KTP untuk transaksi lebih aman.",
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 12,
+                                  color: AppColors.black,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
             const SizedBox(height: 32),
             
             Text(
@@ -84,31 +104,37 @@ class KycScreen extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             
-            _buildUploadBox(
-              title: "Upload Foto KTP",
-              subtitle: "Pastikan teks terbaca jelas",
-              icon: Icons.badge_outlined,
-              onTap: () {},
-            ),
+            isLoading
+                ? const BrutalSkeleton(width: double.infinity, height: 180)
+                : _buildUploadBox(
+                    title: "Upload Foto KTP",
+                    subtitle: "Pastikan teks terbaca jelas",
+                    icon: Icons.badge_outlined,
+                    onTap: () {},
+                  ),
             const SizedBox(height: 24),
             
-            _buildUploadBox(
-              title: "Upload Selfie dengan KTP",
-              subtitle: "Wajah dan KTP harus terlihat",
-              icon: Icons.camera_front_outlined,
-              onTap: () {},
-            ),
+            isLoading
+                ? const BrutalSkeleton(width: double.infinity, height: 180)
+                : _buildUploadBox(
+                    title: "Upload Selfie dengan KTP",
+                    subtitle: "Wajah dan KTP harus terlihat",
+                    icon: Icons.camera_front_outlined,
+                    onTap: () {},
+                  ),
             
             const SizedBox(height: 48),
             
-            BrutalistButton(
-              text: "KIRIM DOKUMEN",
-              onPressed: () {
-                // Submit logic
-              },
-              backgroundColor: AppColors.brightBlue,
-              textColor: AppColors.white,
-            ),
+            isLoading
+                ? const BrutalSkeleton(width: double.infinity, height: 56)
+                : BrutalistButton(
+                    text: "KIRIM DOKUMEN",
+                    onPressed: () {
+                      // Submit logic
+                    },
+                    backgroundColor: AppColors.brightBlue,
+                    textColor: AppColors.white,
+                  ),
             const SizedBox(height: 20),
             Center(
               child: Text(
