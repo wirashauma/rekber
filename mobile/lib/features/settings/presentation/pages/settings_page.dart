@@ -67,6 +67,11 @@ class SettingsPage extends StatelessWidget {
               icon: Icons.lock_outline_rounded,
               onTap: () => context.push('/security'),
             ),
+            _settingsItem(
+              title: 'Syarat & Kebijakan Privasi',
+              icon: Icons.policy_outlined,
+              onTap: () => context.push('/legal'),
+            ),
             const SizedBox(height: 24),
             
             _settingsItem(
