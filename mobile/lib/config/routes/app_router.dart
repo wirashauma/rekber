@@ -20,6 +20,15 @@ import '../../features/settings/presentation/pages/security_screen.dart';
 import '../../features/settings/presentation/pages/legal_screen.dart';
 import '../../features/wallet/presentation/pages/detail_pembayaran_screen.dart';
 import '../../features/transaction/presentation/pages/buat_room_screen.dart';
+import '../../features/admin/presentation/pages/admin_dashboard_screen.dart';
+import '../../features/admin/presentation/pages/admin_dispute_screen.dart';
+import '../../features/admin/presentation/pages/admin_kyc_screen.dart';
+import '../../features/admin/presentation/pages/admin_settings_screen.dart';
+import '../../features/admin/presentation/pages/admin_financial_screen.dart';
+import '../../features/admin/presentation/pages/admin_user_manage_screen.dart';
+import '../../features/admin/presentation/pages/admin_system_screen.dart';
+import '../../features/admin/presentation/pages/admin_main_wrapper.dart';
+import '../../features/admin/presentation/pages/admin_chat_room_screen.dart';
 
 /// REKBER App Router — GoRouter configuration
 class AppRouter {
@@ -147,6 +156,78 @@ class AppRouter {
         path: '/legal',
         name: 'legal',
         builder: (context, state) => const LegalScreen(),
+      ),
+
+      // ── Admin Sub-Screens (Top Level) ──
+      GoRoute(
+        path: '/admin/dispute/chat/:txid',
+        name: 'admin-dispute-chat',
+        builder: (context, state) {
+          final txid = state.pathParameters['txid']!;
+          return AdminChatRoomScreen(txid: txid);
+        },
+      ),
+
+      // ── Admin Routes ──
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) {
+          return AdminMainWrapper(navigationShell: navigationShell);
+        },
+        branches: [
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin/dashboard',
+                name: 'admin-dashboard',
+                builder: (context, state) => const AdminDashboardScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin/dispute',
+                name: 'admin-dispute',
+                builder: (context, state) => const AdminDisputeScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin/kyc',
+                name: 'admin-kyc',
+                builder: (context, state) => const AdminKycScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/admin/settings',
+                name: 'admin-settings',
+                builder: (context, state) => const AdminSettingsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'financial',
+                    name: 'admin-settings-financial',
+                    builder: (context, state) => const AdminFinancialScreen(),
+                  ),
+                  GoRoute(
+                    path: 'users',
+                    name: 'admin-settings-users',
+                    builder: (context, state) => const AdminUserManageScreen(),
+                  ),
+                  GoRoute(
+                    path: 'system',
+                    name: 'admin-settings-system',
+                    builder: (context, state) => const AdminSystemScreen(),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     ],
 
