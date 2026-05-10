@@ -2,10 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
-class RiwayatScreen extends StatelessWidget {
+class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
+
+  @override
+  State<RiwayatScreen> createState() => _RiwayatScreenState();
+}
+
+class _RiwayatScreenState extends State<RiwayatScreen> {
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -64,8 +82,15 @@ class RiwayatScreen extends StatelessWidget {
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(24),
-        itemCount: riwayat.length,
+        itemCount: isLoading ? 5 : riwayat.length,
         itemBuilder: (context, index) {
+          if (isLoading) {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: BrutalSkeletonCard(),
+            );
+          }
+
           final item = riwayat[index];
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
