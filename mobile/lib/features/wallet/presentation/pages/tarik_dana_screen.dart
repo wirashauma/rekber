@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 
 class TarikDanaScreen extends StatefulWidget {
   const TarikDanaScreen({super.key});
@@ -13,13 +14,24 @@ class TarikDanaScreen extends StatefulWidget {
 class _TarikDanaScreenState extends State<TarikDanaScreen> {
   final TextEditingController _amountController = TextEditingController();
   String _selectedAccount = 'BCA - 12345678 a.n. Rizky';
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: AppColors.neonGreen,
+        backgroundColor: AppColors.tealGreen,
         elevation: 0,
         title: Text(
           'TARIK DANA (WITHDRAW)',
@@ -40,7 +52,14 @@ class _TarikDanaScreenState extends State<TarikDanaScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
+        child: isLoading
+            ? Column(
+                children: List.generate(4, (index) => const Padding(
+                  padding: EdgeInsets.only(bottom: 24),
+                  child: BrutalSkeleton(width: double.infinity, height: 100),
+                )),
+              )
+            : Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             BrutalistCard(
