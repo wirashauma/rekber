@@ -6,8 +6,8 @@ class AppColors {
 
   // ── Core Neo-Brutalism Palette ──
   static const Color primary = deepPurple; // Deep Purple
-  static const Color secondary = neonGreen; // Neon Green
-  static const Color accent = neonGreen; // Neon Green
+  static const Color secondary = tealGreen; // Teal Green (New)
+  static const Color accent = tealGreen; // Teal Green (New)
   
   // ── Multi-Color Neo-Brutalist Palette ──
   static const Color deepPurple = Color(0xFF6236FF);
@@ -17,6 +17,7 @@ class AppColors {
   static const Color hotPink = Color(0xFFFF6B6B);
   static const Color paleYellow = Color(0xFFFFF9C4);
   static const Color lightBlue = Color(0xFFB3E5FC);
+  static const Color tealGreen = Color(0xFF2AB09C);
 
   static const Color black = Color(0xFF000000); // Stark Black
   static const Color white = Color(0xFFFFFFFF); // Pure White
