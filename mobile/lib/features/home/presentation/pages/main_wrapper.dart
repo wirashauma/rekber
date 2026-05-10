@@ -32,79 +32,20 @@ class _MainWrapperState extends State<MainWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        final role = (state is AuthAuthenticated) ? state.activeRole : 'user';
-        
-        final List<Widget> pages = [
-          role == 'admin' ? _buildAdminDashboard() : const HomePage(),
-          const HistoryPage(), // Temporary "Transaksi" page
-          const BuatRoomScreen(), // FAB page
-          const AiAssistantScreen(),
-          const SettingsPage(),
-        ];
+    final List<Widget> pages = [
+      const HomePage(),
+      const HistoryPage(), // Temporary "Transaksi" page
+      const BuatRoomScreen(), // FAB page
+      const AiAssistantScreen(),
+      const SettingsPage(),
+    ];
 
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: pages[_currentIndex],
-          bottomNavigationBar: _BrutalistBottomNav(
-            currentIndex: _currentIndex,
-            onTap: _onItemTapped,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildAdminDashboard() {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('ADMIN PANEL 🛠️', style: AppTextStyles.h1),
-              const SizedBox(height: 8),
-              const Text('Kelola transaksi dan sengketa di sini.', style: AppTextStyles.bodyMedium),
-              const SizedBox(height: 32),
-              Expanded(
-                child: Center(
-                  child: BrutalistCard(
-                    backgroundColor: AppColors.paleYellow,
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.admin_panel_settings_rounded, size: 80, color: AppColors.black),
-                        const SizedBox(height: 20),
-                        const Text(
-                          'Dashboard Admin\nSedang Dikembangkan',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        BrutalistButton(
-                          text: 'LOGOUT',
-                          backgroundColor: AppColors.hotPink,
-                          textColor: AppColors.white,
-                          onPressed: () {
-                            context.read<AuthBloc>().add(AuthLogoutRequested());
-                            context.go('/login');
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      body: pages[_currentIndex],
+      bottomNavigationBar: _BrutalistBottomNav(
+        currentIndex: _currentIndex,
+        onTap: _onItemTapped,
       ),
     );
   }
