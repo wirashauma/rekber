@@ -34,7 +34,11 @@ class _LoginPageState extends State<LoginPage> {
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is AuthAuthenticated) {
-            context.go('/home');
+            if (state.user.isAdmin) {
+              context.go('/admin/dashboard');
+            } else {
+              context.go('/home');
+            }
           }
           if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
