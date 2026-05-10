@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 
 class AiAssistantScreen extends StatefulWidget {
   const AiAssistantScreen({super.key});
@@ -22,6 +23,18 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
       'time': '12:00',
     },
   ];
+
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -99,8 +112,28 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-              itemCount: _messages.length,
+              itemCount: isLoading ? 4 : _messages.length,
               itemBuilder: (context, index) {
+                if (isLoading) {
+                  final isLeft = index % 2 == 0;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Row(
+                      mainAxisAlignment: isLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
+                      children: [
+                        if (isLeft) const BrutalSkeleton(width: 40, height: 40, borderRadius: 4),
+                        if (isLeft) const SizedBox(width: 12),
+                        BrutalSkeleton(
+                          width: MediaQuery.of(context).size.width * 0.6,
+                          height: 80,
+                          borderRadius: 0,
+                        ),
+                        if (!isLeft) const SizedBox(width: 12),
+                        if (!isLeft) const BrutalSkeleton(width: 40, height: 40, borderRadius: 4),
+                      ],
+                    ),
+                  );
+                }
                 final msg = _messages[index];
                 return _buildChatBubble(msg);
               },
