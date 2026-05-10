@@ -4,8 +4,27 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 
-class SettingsPage extends StatelessWidget {
+import '../../../../core/widgets/brutal_skeleton.dart';
+
+class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 1500), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,68 +39,77 @@ class SettingsPage extends StatelessWidget {
         child: Column(
           children: [
             // Profile Header
-            const BrutalistCard(
-              backgroundColor: AppColors.white,
-              padding: EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 35,
-                    backgroundColor: AppColors.primary,
-                    child: Icon(Icons.person_rounded, size: 40, color: AppColors.black),
-                  ),
-                  SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            isLoading
+                ? const BrutalSkeleton(width: double.infinity, height: 110, borderRadius: 0)
+                : const BrutalistCard(
+                    backgroundColor: AppColors.white,
+                    padding: EdgeInsets.all(20),
+                    child: Row(
                       children: [
-                        Text('Wira Shauma', style: AppTextStyles.h2),
-                        Text('wira@example.com', style: AppTextStyles.bodySmall),
+                        CircleAvatar(
+                          radius: 35,
+                          backgroundColor: AppColors.primary,
+                          child: Icon(Icons.person_rounded, size: 40, color: AppColors.black),
+                        ),
+                        SizedBox(width: 20),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Wira Shauma', style: AppTextStyles.h2),
+                              Text('wira@example.com', style: AppTextStyles.bodySmall),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
             const SizedBox(height: 32),
             
             // Settings List
-            _settingsItem(
-              title: 'Edit Profile',
-              icon: Icons.person_outline_rounded,
-              onTap: () => context.push('/edit-profile'),
-            ),
-            _settingsItem(
-              title: 'KYC Status',
-              icon: Icons.verified_user_outlined,
-              badge: _buildKYCBadge(true),
-              onTap: () => context.push('/kyc'),
-            ),
-            _settingsItem(
-              title: 'Pusat Bantuan',
-              icon: Icons.help_outline_rounded,
-              onTap: () => context.push('/help-center'),
-            ),
-            _settingsItem(
-              title: 'Keamanan Akun',
-              icon: Icons.lock_outline_rounded,
-              onTap: () => context.push('/security'),
-            ),
-            _settingsItem(
-              title: 'Syarat & Kebijakan Privasi',
-              icon: Icons.policy_outlined,
-              onTap: () => context.push('/legal'),
-            ),
-            const SizedBox(height: 24),
-            
-            _settingsItem(
-              title: 'Keluar (Logout)',
-              icon: Icons.logout_rounded,
-              textColor: AppColors.error,
-              onTap: () {
-                _showLogoutDialog(context);
-              },
-            ),
+            if (isLoading)
+              ...List.generate(5, (index) => const Padding(
+                padding: EdgeInsets.only(bottom: 16.0),
+                child: BrutalSkeleton(width: double.infinity, height: 60, borderRadius: 0),
+              ))
+            else ...[
+              _settingsItem(
+                title: 'Edit Profile',
+                icon: Icons.person_outline_rounded,
+                onTap: () => context.push('/edit-profile'),
+              ),
+              _settingsItem(
+                title: 'KYC Status',
+                icon: Icons.verified_user_outlined,
+                badge: _buildKYCBadge(true),
+                onTap: () => context.push('/kyc'),
+              ),
+              _settingsItem(
+                title: 'Pusat Bantuan',
+                icon: Icons.help_outline_rounded,
+                onTap: () => context.push('/help-center'),
+              ),
+              _settingsItem(
+                title: 'Keamanan Akun',
+                icon: Icons.lock_outline_rounded,
+                onTap: () => context.push('/security'),
+              ),
+              _settingsItem(
+                title: 'Syarat & Kebijakan Privasi',
+                icon: Icons.policy_outlined,
+                onTap: () => context.push('/legal'),
+              ),
+              const SizedBox(height: 24),
+              
+              _settingsItem(
+                title: 'Keluar (Logout)',
+                icon: Icons.logout_rounded,
+                textColor: AppColors.error,
+                onTap: () {
+                  _showLogoutDialog(context);
+                },
+              ),
+            ],
             
             const SizedBox(height: 40),
             const Text(
