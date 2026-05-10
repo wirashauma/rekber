@@ -5,7 +5,7 @@ import 'package:rekber/core/constants/app_colors.dart';
 import 'package:rekber/core/widgets/brutalist_widgets.dart';
 import 'home_page.dart';
 import '../../../../core/constants/app_text_styles.dart';
-import '../../../transaction/presentation/pages/create_room_page.dart';
+import '../../../transaction/presentation/pages/buat_room_screen.dart';
 import '../../../transaction/presentation/pages/history_page.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
@@ -39,7 +39,7 @@ class _MainWrapperState extends State<MainWrapper> {
         final List<Widget> pages = [
           role == 'admin' ? _buildAdminDashboard() : const HomePage(),
           const HistoryPage(), // Temporary "Transaksi" page
-          const CreateRoomPage(), // FAB page
+          const BuatRoomScreen(), // FAB page
           const AiAssistantScreen(),
           const SettingsPage(),
         ];
