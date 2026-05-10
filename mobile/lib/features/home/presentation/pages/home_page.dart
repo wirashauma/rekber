@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 import '../../../../core/services/mock_data_service.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
@@ -71,11 +72,10 @@ class _HomePageState extends State<HomePage> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: isLoading
-                    ? const BrutalistSkeleton(
+                    ? const BrutalSkeleton(
                         width: double.infinity,
                         height: 200,
-                        borderRadius: 0.0,
-                        shadowOffset: Offset(4, 4),
+                        borderRadius: 12.0,
                       )
                     : BrutalistCard(
                         backgroundColor: AppColors.primary,
@@ -280,15 +280,7 @@ class _HomePageState extends State<HomePage> {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     if (isLoading) {
-                      return const Padding(
-                        padding: EdgeInsets.only(bottom: 20.0),
-                        child: BrutalistSkeleton(
-                          width: double.infinity,
-                          height: 88,
-                          borderRadius: 0.0,
-                          shadowOffset: Offset(4, 4),
-                        ),
-                      );
+                      return const BrutalSkeletonCard();
                     }
 
                     final trx = MockDataService.dummyTransactions[index];
