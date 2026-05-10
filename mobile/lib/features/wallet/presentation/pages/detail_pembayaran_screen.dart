@@ -43,9 +43,9 @@ class _DetailPembayaranScreenState extends State<DetailPembayaranScreen> {
   }
 
   String _formatDuration(int seconds) {
-    int h = seconds ~/ 3600;
-    int m = (seconds % 3600) ~/ 60;
-    int s = seconds % 60;
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
     return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
@@ -57,7 +57,7 @@ class _DetailPembayaranScreenState extends State<DetailPembayaranScreen> {
         backgroundColor: Colors.transparent,
         child: Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF39FF14), // Neon Green
+            color: AppColors.tealGreen,
             border: Border.all(color: Colors.black, width: 4.0),
             boxShadow: const [
               BoxShadow(color: Colors.black, offset: Offset(8, 8)),
