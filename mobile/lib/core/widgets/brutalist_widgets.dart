@@ -61,6 +61,7 @@ class BrutalistButton extends StatefulWidget {
   final IconData? icon;
   final bool isLoading;
   final double height;
+  final double? width;
   final EdgeInsetsGeometry? padding;
   final double borderRadius;
 
@@ -73,6 +74,7 @@ class BrutalistButton extends StatefulWidget {
     this.icon,
     this.isLoading = false,
     this.height = 56,
+    this.width,
     this.padding,
     this.borderRadius = 12,
   });
@@ -98,6 +100,7 @@ class _BrutalistButtonState extends State<BrutalistButton> {
           // Shadow
           Container(
             height: widget.height,
+            width: widget.width,
             margin: const EdgeInsets.only(left: 6, top: 6),
             decoration: BoxDecoration(
               color: AppColors.black,
@@ -108,6 +111,7 @@ class _BrutalistButtonState extends State<BrutalistButton> {
           AnimatedContainer(
             duration: const Duration(milliseconds: 50),
             height: widget.height,
+            width: widget.width,
             padding: widget.padding,
             margin: _isPressed 
                 ? const EdgeInsets.only(left: 4, top: 4) 
