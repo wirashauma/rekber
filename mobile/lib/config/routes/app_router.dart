@@ -8,6 +8,16 @@ import '../../features/chat/presentation/pages/ai_assistant_screen.dart';
 import '../../features/home/presentation/pages/notification_page.dart';
 import '../../features/transaction/presentation/pages/transaction_detail_page.dart';
 import '../../features/chat/presentation/pages/chat_room_page.dart';
+import '../../features/wallet/presentation/pages/top_up_screen.dart';
+import '../../features/wallet/presentation/pages/tarik_dana_screen.dart';
+import '../../features/transaction/presentation/pages/input_kode_screen.dart';
+import '../../features/transaction/presentation/pages/riwayat_screen.dart';
+import '../../features/transaction/presentation/pages/kalkulator_screen.dart';
+import '../../features/settings/presentation/pages/edit_profile_screen.dart';
+import '../../features/settings/presentation/pages/kyc_screen.dart';
+import '../../features/settings/presentation/pages/help_center_screen.dart';
+import '../../features/settings/presentation/pages/security_screen.dart';
+import '../../features/settings/presentation/pages/legal_screen.dart';
 import '../../features/wallet/presentation/pages/detail_pembayaran_screen.dart';
 import '../../features/transaction/presentation/pages/buat_room_screen.dart';
 
