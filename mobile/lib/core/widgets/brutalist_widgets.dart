@@ -60,6 +60,9 @@ class BrutalistButton extends StatefulWidget {
   final Color textColor;
   final IconData? icon;
   final bool isLoading;
+  final double height;
+  final EdgeInsetsGeometry? padding;
+  final double borderRadius;
 
   const BrutalistButton({
     super.key,
@@ -69,6 +72,9 @@ class BrutalistButton extends StatefulWidget {
     this.textColor = AppColors.black,
     this.icon,
     this.isLoading = false,
+    this.height = 56,
+    this.padding,
+    this.borderRadius = 12,
   });
 
   @override
@@ -80,8 +86,6 @@ class _BrutalistButtonState extends State<BrutalistButton> {
 
   @override
   Widget build(BuildContext context) {
-    final _ = _isPressed ? const Offset(2, 2) : const Offset(6, 6);
-
     return GestureDetector(
       onTapDown: (_) => setState(() => _isPressed = true),
       onTapUp: (_) {
@@ -93,23 +97,24 @@ class _BrutalistButtonState extends State<BrutalistButton> {
         children: [
           // Shadow
           Container(
-            height: 56,
+            height: widget.height,
             margin: const EdgeInsets.only(left: 6, top: 6),
             decoration: BoxDecoration(
               color: AppColors.black,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(widget.borderRadius),
             ),
           ),
           // Button
           AnimatedContainer(
             duration: const Duration(milliseconds: 50),
-            height: 56,
+            height: widget.height,
+            padding: widget.padding,
             margin: _isPressed 
                 ? const EdgeInsets.only(left: 4, top: 4) 
                 : EdgeInsets.zero,
             decoration: BoxDecoration(
               color: widget.backgroundColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(widget.borderRadius),
               border: Border.all(color: AppColors.black, width: 3),
             ),
             child: Center(
@@ -124,6 +129,7 @@ class _BrutalistButtonState extends State<BrutalistButton> {
                     )
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         if (widget.icon != null) ...[
                           Icon(widget.icon, color: widget.textColor),
@@ -132,7 +138,7 @@ class _BrutalistButtonState extends State<BrutalistButton> {
                         Text(
                           widget.text,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: widget.height < 45 ? 12 : 16,
                             fontWeight: FontWeight.w900,
                             color: widget.textColor,
                             letterSpacing: 1.0,
