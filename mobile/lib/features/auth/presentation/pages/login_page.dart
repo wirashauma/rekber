@@ -56,7 +56,7 @@ class _LoginPageState extends State<LoginPage> {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.neonGreen,
+                      color: AppColors.tealGreen,
                       border: Border.all(color: AppColors.black, width: 3),
                       boxShadow: const [
                         BoxShadow(
@@ -133,7 +133,7 @@ class _LoginPageState extends State<LoginPage> {
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               decoration: BoxDecoration(
-                                color: AppColors.neonGreen,
+                                color: AppColors.tealGreen,
                                 borderRadius: BorderRadius.circular(4),
                                 border: Border.all(color: AppColors.black, width: 2.5),
                                 boxShadow: const [
