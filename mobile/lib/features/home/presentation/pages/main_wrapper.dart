@@ -46,10 +46,7 @@ class _MainWrapperState extends State<MainWrapper> {
 
         return Scaffold(
           backgroundColor: AppColors.background,
-          body: IndexedStack(
-            index: _currentIndex,
-            children: pages,
-          ),
+          body: pages[_currentIndex],
           bottomNavigationBar: _BrutalistBottomNav(
             currentIndex: _currentIndex,
             onTap: _onItemTapped,
