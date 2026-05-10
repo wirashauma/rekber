@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 
@@ -151,7 +152,7 @@ class _TopUpScreenState extends State<TopUpScreen> {
                   });
                 }
               },
-              backgroundColor: AppColors.neonGreen,
+              backgroundColor: AppColors.tealGreen,
             ),
           ],
         ),
