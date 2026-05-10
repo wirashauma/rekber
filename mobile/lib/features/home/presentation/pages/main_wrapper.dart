@@ -146,16 +146,20 @@ class _BrutalistBottomNav extends StatelessWidget {
             top: -25,
             child: GestureDetector(
               onTap: () => onTap(2),
-              child: const SizedBox(
+              child: SizedBox(
                 width: 75,
                 height: 75,
                 child: BrutalistCard(
                   backgroundColor: AppColors.white,
                   shape: BoxShape.circle,
-                  shadowOffset: Offset(4, 4),
+                  shadowOffset: const Offset(4, 4),
                   padding: EdgeInsets.zero,
                   child: Center(
-                    child: Icon(Icons.add_rounded, size: 40, color: AppColors.black),
+                    child: Icon(
+                      Icons.add_rounded, 
+                      size: 40, 
+                      color: currentIndex == 2 ? AppColors.tealGreen : AppColors.black
+                    ),
                   ),
                 ),
               ),
@@ -176,7 +180,7 @@ class _BrutalistBottomNav extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isSelected ? AppColors.primary : AppColors.black,
+              color: isSelected ? AppColors.tealGreen : AppColors.black,
               size: 26,
             ),
             const SizedBox(height: 2),
@@ -185,7 +189,7 @@ class _BrutalistBottomNav extends StatelessWidget {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.w900 : FontWeight.w500,
-                color: isSelected ? AppColors.primary : AppColors.black,
+                color: isSelected ? AppColors.tealGreen : AppColors.black,
               ),
             ),
           ],
