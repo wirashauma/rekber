@@ -3,8 +3,27 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 
-class SecurityScreen extends StatelessWidget {
+import '../../../../core/widgets/brutal_skeleton.dart';
+
+class SecurityScreen extends StatefulWidget {
   const SecurityScreen({super.key});
+
+  @override
+  State<SecurityScreen> createState() => _SecurityScreenState();
+}
+
+class _SecurityScreenState extends State<SecurityScreen> {
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,28 +67,35 @@ class SecurityScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             
-            _buildLabel("Password Lama"),
-            const BrutalistTextField(
-              hintText: "Masukkan password saat ini",
-              prefixIcon: Icons.lock_outline_rounded,
-              obscureText: true,
-            ),
-            const SizedBox(height: 20),
-            
-            _buildLabel("Password Baru"),
-            const BrutalistTextField(
-              hintText: "Minimal 8 karakter",
-              prefixIcon: Icons.lock_reset_rounded,
-              obscureText: true,
-            ),
-            const SizedBox(height: 20),
-            
-            _buildLabel("Konfirmasi Password Baru"),
-            const BrutalistTextField(
-              hintText: "Ulangi password baru",
-              prefixIcon: Icons.verified_user_outlined,
-              obscureText: true,
-            ),
+            if (isLoading)
+              ...List.generate(3, (index) => const Padding(
+                padding: EdgeInsets.only(bottom: 20),
+                child: BrutalSkeleton(width: double.infinity, height: 56),
+              ))
+            else ...[
+              _buildLabel("Password Lama"),
+              const BrutalistTextField(
+                hintText: "Masukkan password saat ini",
+                prefixIcon: Icons.lock_outline_rounded,
+                obscureText: true,
+              ),
+              const SizedBox(height: 20),
+              
+              _buildLabel("Password Baru"),
+              const BrutalistTextField(
+                hintText: "Minimal 8 karakter",
+                prefixIcon: Icons.lock_reset_rounded,
+                obscureText: true,
+              ),
+              const SizedBox(height: 20),
+              
+              _buildLabel("Konfirmasi Password Baru"),
+              const BrutalistTextField(
+                hintText: "Ulangi password baru",
+                prefixIcon: Icons.verified_user_outlined,
+                obscureText: true,
+              ),
+            ],
             
             const SizedBox(height: 40),
             
@@ -83,39 +109,43 @@ class SecurityScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             
-            BrutalistCard(
-              backgroundColor: AppColors.paleYellow,
-              onTap: () {
-                // Change PIN logic
-              },
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              child: Row(
-                children: [
-                  const Icon(Icons.pin_rounded, color: AppColors.black),
-                  const SizedBox(width: 16),
-                  Text(
-                    "Ubah PIN Transaksi",
-                    style: GoogleFonts.spaceGrotesk(
-                      fontWeight: FontWeight.w900,
-                      fontSize: 16,
+            isLoading
+                ? const BrutalSkeleton(width: double.infinity, height: 60)
+                : BrutalistCard(
+                    backgroundColor: AppColors.paleYellow,
+                    onTap: () {
+                      // Change PIN logic
+                    },
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.pin_rounded, color: AppColors.black),
+                        const SizedBox(width: 16),
+                        Text(
+                          "Ubah PIN Transaksi",
+                          style: GoogleFonts.spaceGrotesk(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const Spacer(),
+                        const Icon(Icons.chevron_right_rounded, color: AppColors.black),
+                      ],
                     ),
                   ),
-                  const Spacer(),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.black),
-                ],
-              ),
-            ),
             
             const SizedBox(height: 48),
             
-            BrutalistButton(
-              text: "PERBARUI KEAMANAN",
-              onPressed: () {
-                // Update security logic
-              },
-              backgroundColor: AppColors.hotPink,
-              textColor: AppColors.white,
-            ),
+            isLoading
+                ? const BrutalSkeleton(width: double.infinity, height: 56)
+                : BrutalistButton(
+                    text: "PERBARUI KEAMANAN",
+                    onPressed: () {
+                      // Update security logic
+                    },
+                    backgroundColor: AppColors.hotPink,
+                    textColor: AppColors.white,
+                  ),
           ],
         ),
       ),
