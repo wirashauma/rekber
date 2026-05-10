@@ -2,10 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 import '../../../../core/services/mock_data_service.dart';
 
-class HistoryPage extends StatelessWidget {
+class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
+
+  @override
+  State<HistoryPage> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends State<HistoryPage> {
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,8 +42,15 @@ class HistoryPage extends StatelessWidget {
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(20.0),
-        itemCount: transactions.length,
+        itemCount: isLoading ? 6 : transactions.length,
         itemBuilder: (context, index) {
+          if (isLoading) {
+            return const Padding(
+              padding: EdgeInsets.only(bottom: 16.0),
+              child: BrutalSkeletonCard(),
+            );
+          }
+
           final trx = transactions[index];
           // Mock some chat data
           final lastMessage = index % 2 == 0 
