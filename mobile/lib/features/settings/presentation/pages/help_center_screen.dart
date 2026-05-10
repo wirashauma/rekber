@@ -3,8 +3,27 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 
-class HelpCenterScreen extends StatelessWidget {
+import '../../../../core/widgets/brutal_skeleton.dart';
+
+class HelpCenterScreen extends StatefulWidget {
   const HelpCenterScreen({super.key});
+
+  @override
+  State<HelpCenterScreen> createState() => _HelpCenterScreenState();
+}
+
+class _HelpCenterScreenState extends State<HelpCenterScreen> {
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,34 +68,41 @@ class HelpCenterScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 20),
                 
-                _buildFaqItem(
-                  question: "Bagaimana sistem Rekber bekerja?",
-                  answer: "Pembeli mentransfer dana ke sistem Rekber. Dana ditahan dengan aman. Penjual mengirim pesanan. Setelah pembeli mengonfirmasi pesanan sesuai, dana baru diteruskan ke penjual.",
-                ),
-                _buildFaqItem(
-                  question: "Siapa yang menanggung biaya admin (fee)?",
-                  answer: "Biaya admin dapat ditanggung oleh Pembeli, Penjual, atau dibagi dua, tergantung kesepakatan kalian saat inisiasi transaksi (pembuatan kode).",
-                ),
-                _buildFaqItem(
-                  question: "Kapan saya harus menekan tombol 'Selesai'?",
-                  answer: "HANYA tekan tombol Selesai jika Anda sudah menerima barang/jasa, mengecek semuanya, dan mengamankan data (jika berupa akun digital). Jangan klik jika masih ada masalah!",
-                ),
-                _buildFaqItem(
-                  question: "Apa itu Masa Garansi?",
-                  answer: "Waktu tunggu (misal 2x24 jam) di mana dana ditahan oleh sistem setelah pesanan dikirim, untuk memastikan tidak ada komplain atau percobaan Hackback.",
-                ),
-                _buildFaqItem(
-                  question: "Bagaimana jika barang tidak sesuai (Dispute)?",
-                  answer: "Anda dapat menekan tombol 'Panggil Admin' di dalam ruang chat. Dana akan dibekukan sepenuhnya, dan Admin kami akan masuk sebagai penengah untuk meminta bukti dari kedua pihak.",
-                ),
-                _buildFaqItem(
-                  question: "Bagaimana cara membatalkan transaksi?",
-                  answer: "Transaksi hanya bisa dibatalkan jika kedua belah pihak setuju, atau jika penjual belum merespon dalam batas waktu yang ditentukan. Dana akan otomatis dikembalikan (Refund) ke pembeli.",
-                ),
-                _buildFaqItem(
-                  question: "Berapa lama proses penarikan dana (Withdraw)?",
-                  answer: "Penarikan dana ke rekening bank atau E-Wallet akan diproses dalam waktu 1x24 jam pada hari kerja.",
-                ),
+                if (isLoading)
+                  ...List.generate(6, (index) => const Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: BrutalSkeleton(width: double.infinity, height: 60),
+                  ))
+                else ...[
+                  _buildFaqItem(
+                    question: "Bagaimana sistem Rekber bekerja?",
+                    answer: "Pembeli mentransfer dana ke sistem Rekber. Dana ditahan dengan aman. Penjual mengirim pesanan. Setelah pembeli mengonfirmasi pesanan sesuai, dana baru diteruskan ke penjual.",
+                  ),
+                  _buildFaqItem(
+                    question: "Siapa yang menanggung biaya admin (fee)?",
+                    answer: "Biaya admin dapat ditanggung oleh Pembeli, Penjual, atau dibagi dua, tergantung kesepakatan kalian saat inisiasi transaksi (pembuatan kode).",
+                  ),
+                  _buildFaqItem(
+                    question: "Kapan saya harus menekan tombol 'Selesai'?",
+                    answer: "HANYA tekan tombol Selesai jika Anda sudah menerima barang/jasa, mengecek semuanya, dan mengamankan data (jika berupa akun digital). Jangan klik jika masih ada masalah!",
+                  ),
+                  _buildFaqItem(
+                    question: "Apa itu Masa Garansi?",
+                    answer: "Waktu tunggu (misal 2x24 jam) di mana dana ditahan oleh sistem setelah pesanan dikirim, untuk memastikan tidak ada komplain atau percobaan Hackback.",
+                  ),
+                  _buildFaqItem(
+                    question: "Bagaimana jika barang tidak sesuai (Dispute)?",
+                    answer: "Anda dapat menekan tombol 'Panggil Admin' di dalam ruang chat. Dana akan dibekukan sepenuhnya, dan Admin kami akan masuk sebagai penengah untuk meminta bukti dari kedua pihak.",
+                  ),
+                  _buildFaqItem(
+                    question: "Bagaimana cara membatalkan transaksi?",
+                    answer: "Transaksi hanya bisa dibatalkan jika kedua belah pihak setuju, atau jika penjual belum merespon dalam batas waktu yang ditentukan. Dana akan otomatis dikembalikan (Refund) ke pembeli.",
+                  ),
+                  _buildFaqItem(
+                    question: "Berapa lama proses penarikan dana (Withdraw)?",
+                    answer: "Penarikan dana ke rekening bank atau E-Wallet akan diproses dalam waktu 1x24 jam pada hari kerja.",
+                  ),
+                ],
                 const SizedBox(height: 20),
               ],
             ),
@@ -88,14 +114,16 @@ class HelpCenterScreen extends StatelessWidget {
               color: AppColors.white,
               border: Border(top: BorderSide(color: AppColors.black, width: 2.5)),
             ),
-            child: BrutalistButton(
-              text: "CHAT ADMIN (WHATSAPP)",
-              onPressed: () {
-                // WhatsApp logic
-              },
-              backgroundColor: AppColors.success,
-              icon: Icons.chat_bubble_outline_rounded,
-            ),
+            child: isLoading
+                ? const BrutalSkeleton(width: double.infinity, height: 56)
+                : BrutalistButton(
+                    text: "CHAT ADMIN (WHATSAPP)",
+                    onPressed: () {
+                      // WhatsApp logic
+                    },
+                    backgroundColor: AppColors.success,
+                    icon: Icons.chat_bubble_outline_rounded,
+                  ),
           ),
         ],
       ),
