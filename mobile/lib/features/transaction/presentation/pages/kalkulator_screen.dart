@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 
 class KalkulatorScreen extends StatefulWidget {
   const KalkulatorScreen({super.key});
@@ -14,6 +15,7 @@ class KalkulatorScreen extends StatefulWidget {
 class _KalkulatorScreenState extends State<KalkulatorScreen> {
   final TextEditingController _amountController = TextEditingController();
   String _feePayer = 'Pembeli'; // Pembeli, Penjual, Dibagi Dua
+  bool isLoading = true;
 
   double get _amount => double.tryParse(_amountController.text) ?? 0;
   double get _fee => _amount * 0.02; // Fixed 2% fee for mock
@@ -22,6 +24,11 @@ class _KalkulatorScreenState extends State<KalkulatorScreen> {
   void initState() {
     super.initState();
     _amountController.addListener(() => setState(() {}));
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
   }
 
   @override
@@ -50,7 +57,14 @@ class _KalkulatorScreenState extends State<KalkulatorScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
+        child: isLoading
+            ? Column(
+                children: List.generate(4, (index) => const Padding(
+                  padding: EdgeInsets.only(bottom: 24),
+                  child: BrutalSkeleton(width: double.infinity, height: 100),
+                )),
+              )
+            : Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
