@@ -61,7 +61,7 @@ class _AdminChatRoomScreenState extends State<AdminChatRoomScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.black),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => context.pop(),
         ),
         title: Text(
@@ -69,21 +69,17 @@ class _AdminChatRoomScreenState extends State<AdminChatRoomScreen> {
           style: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.w900,
             fontSize: 16,
-            color: AppColors.black,
+            color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.greenAccent,
+        backgroundColor: Colors.red,
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.info_outline, color: AppColors.black),
+            icon: const Icon(Icons.info_outline, color: Colors.white),
             onPressed: () {},
           ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(2),
-          child: Container(color: AppColors.black, height: 2),
-        ),
       ),
       body: Column(
         children: [
