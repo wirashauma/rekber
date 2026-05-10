@@ -78,7 +78,7 @@ class _HomePageState extends State<HomePage> {
                         borderRadius: 12.0,
                       )
                     : BrutalistCard(
-                        backgroundColor: AppColors.primary,
+                        backgroundColor: AppColors.tealGreen,
                         padding: const EdgeInsets.all(24),
                         shadowOffset: const Offset(4, 4),
                         child: Column(
