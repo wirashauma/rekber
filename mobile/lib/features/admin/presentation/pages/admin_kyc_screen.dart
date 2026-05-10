@@ -23,16 +23,12 @@ class _AdminKycScreenState extends State<AdminKycScreen> {
           style: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.w900,
             letterSpacing: 1.5,
-            color: AppColors.black,
+            color: AppColors.white,
           ),
         ),
-        backgroundColor: Colors.greenAccent,
+        backgroundColor: Colors.blue,
         elevation: 0,
         centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(2),
-          child: Container(color: AppColors.black, height: 2),
-        ),
       ),
       body: Column(
         children: [
