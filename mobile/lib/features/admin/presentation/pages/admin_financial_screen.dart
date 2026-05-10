@@ -23,7 +23,7 @@ class AdminFinancialScreen extends StatelessWidget {
             color: AppColors.black,
           ),
         ),
-        backgroundColor: Colors.greenAccent,
+        backgroundColor: AppColors.white,
         elevation: 0,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(2),
