@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 
 class ChatRoomPage extends StatefulWidget {
   const ChatRoomPage({super.key});
@@ -13,6 +14,17 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
   final String _currentUserId = 'user_1';
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   final List<Map<String, dynamic>> _messages = [
     {
@@ -52,8 +64,28 @@ class _ChatRoomPageState extends State<ChatRoomPage> {
             child: ListView.builder(
               controller: _scrollController,
               padding: const EdgeInsets.all(20),
-              itemCount: _messages.length,
+              itemCount: isLoading ? 5 : _messages.length,
               itemBuilder: (context, index) {
+                if (isLoading) {
+                  final isMe = index % 2 != 0;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16.0),
+                    child: Row(
+                      mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+                      children: [
+                        if (!isMe) const BrutalSkeleton(width: 32, height: 32, borderRadius: 16),
+                        if (!isMe) const SizedBox(width: 8),
+                        BrutalSkeleton(
+                          width: MediaQuery.of(context).size.width * 0.6,
+                          height: 60,
+                          borderRadius: 8,
+                        ),
+                        if (isMe) const SizedBox(width: 8),
+                        if (isMe) const BrutalSkeleton(width: 32, height: 32, borderRadius: 16),
+                      ],
+                    ),
+                  );
+                }
                 final msg = _messages[index];
                 final isMe = msg['senderId'] == _currentUserId;
                 return _buildChatBubble(msg, isMe);
