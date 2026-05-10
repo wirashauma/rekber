@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 
 class InputKodeScreen extends StatefulWidget {
   const InputKodeScreen({super.key});
@@ -13,6 +14,17 @@ class InputKodeScreen extends StatefulWidget {
 class _InputKodeScreenState extends State<InputKodeScreen> {
   final TextEditingController _kodeController = TextEditingController();
   bool _hasSearched = false;
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 1200), () {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +52,14 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: Column(
+        child: isLoading 
+          ? Column(
+              children: List.generate(4, (index) => const Padding(
+                padding: EdgeInsets.only(bottom: 24),
+                child: BrutalSkeleton(width: double.infinity, height: 80),
+              )),
+            )
+          : Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -135,7 +154,7 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
                 onPressed: () {
                   // Action
                 },
-                backgroundColor: AppColors.neonGreen,
+                backgroundColor: AppColors.tealGreen,
               ),
             ] else 
               Center(
