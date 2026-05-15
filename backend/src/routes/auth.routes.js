@@ -1,0 +1,21 @@
+// =============================================================================
+// Auth Routes
+// =============================================================================
+// Defines routes for authentication (register, login).
+// These routes are PUBLIC — no JWT required.
+
+const express = require('express');
+const router = express.Router();
+const authController = require('../controllers/auth.controller');
+const { registerRules, loginRules } = require('../validators/auth.validator');
+const { validate } = require('../middlewares/validate.middleware');
+
+// POST /api/auth/register
+// Register a new user account
+router.post('/register', registerRules, validate, authController.register);
+
+// POST /api/auth/login
+// Authenticate and receive a JWT token
+router.post('/login', loginRules, validate, authController.login);
+
+module.exports = router;
