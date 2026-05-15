@@ -1,0 +1,91 @@
+// =============================================================================
+// REKBER (Escrow) - Prisma Schema
+// =============================================================================
+// This schema defines the database models for the escrow application.
+// It uses PostgreSQL as the database provider via Prisma ORM.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+/// Role enum for User access control
+enum Role {
+  USER
+  ADMIN
+}
+
+/// TransactionStatus tracks the lifecycle of an escrow transaction.
+///
+/// State Machine Flow:
+///   PENDING  →  PAID  →  SHIPPED  →  COMPLETED
+///      ↓         ↓         ↓
+///   CANCELLED  DISPUTED  DISPUTED
+///
+/// - PENDING:    Transaction created by buyer, awaiting payment.
+/// - PAID:       Buyer has deposited funds into escrow.
+/// - SHIPPED:    Seller has shipped the item / delivered the service.
+/// - COMPLETED:  Buyer confirmed receipt; funds released to seller.
+/// - CANCELLED:  Transaction cancelled before completion.
+/// - DISPUTED:   A dispute has been raised by either party.
+enum TransactionStatus {
+  PENDING
+  PAID
+  SHIPPED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+/// User model represents both buyers and sellers on the platform.
+/// Each user has a virtual balance (wallet) for escrow operations.
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String   // Hashed with bcryptjs, never stored in plaintext
+  role      Role     @default(USER)
+  balance   Float    @default(0) // Virtual wallet balance in IDR
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations: A user can be a buyer or seller in many transactions
+  buyerTransactions  Transaction[] @relation("BuyerTransactions")
+  sellerTransactions Transaction[] @relation("SellerTransactions")
+
+  @@map("users") // Map to lowercase table name in PostgreSQL
+}
+
+/// Transaction model represents an escrow transaction between a buyer and seller.
+/// Funds are held in escrow until the transaction reaches COMPLETED status.
+model Transaction {
+  id              String            @id @default(uuid())
+  amount          Float             // Transaction amount in IDR
+  itemDescription String            @map("item_description")
+  status          TransactionStatus @default(PENDING)
+
+  // Foreign keys
+  buyerId  String @map("buyer_id")
+  sellerId String @map("seller_id")
+
+  // Relations
+  buyer  User @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  seller User @relation("SellerTransactions", fields: [sellerId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("transactions") // Map to lowercase table name in PostgreSQL
+}
