@@ -118,24 +118,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: BrutalSkeleton(width: double.infinity, height: 56),
               ))
             else ...[
-              _buildLabel("Nama Lengkap"),
+              _buildLabel('Nama Lengkap'),
               const BrutalistTextField(
-                hintText: "Masukkan nama lengkap",
+                hintText: 'Masukkan nama lengkap',
                 prefixIcon: Icons.person_outline_rounded,
               ),
               const SizedBox(height: 24),
               
-              _buildLabel("Email"),
+              _buildLabel('Email'),
               const BrutalistTextField(
-                hintText: "Masukkan email aktif",
+                hintText: 'Masukkan email aktif',
                 prefixIcon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
               ),
               const SizedBox(height: 24),
               
-              _buildLabel("Nomor Telepon"),
+              _buildLabel('Nomor Telepon'),
               const BrutalistTextField(
-                hintText: "Contoh: 08123456789",
+                hintText: 'Contoh: 08123456789',
                 prefixIcon: Icons.phone_android_rounded,
                 keyboardType: TextInputType.phone,
               ),
@@ -146,7 +146,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             isLoading
                 ? const BrutalSkeleton(width: double.infinity, height: 56)
                 : BrutalistButton(
-                    text: "SIMPAN PERUBAHAN",
+                    text: 'SIMPAN PERUBAHAN',
                     onPressed: () {
                       // Save logic
                     },
