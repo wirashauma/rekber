@@ -13,7 +13,6 @@ void main() {
     final sellerEmail = 'seller_${DateTime.now().millisecondsSinceEpoch}@example.com';
     const password = 'password123';
     
-    String buyerId = '';
     String sellerId = '';
     String transactionId = '';
 
@@ -38,7 +37,6 @@ void main() {
       
       expect(loginResponse['data']['token'], isNotNull);
       await apiServiceA.saveToken(loginResponse['data']['token']);
-      buyerId = loginResponse['data']['user']['id'].toString();
     });
 
     testWidgets('Step 2: User B (Seller) registers and logs in', (tester) async {
