@@ -71,7 +71,7 @@ class _KycScreenState extends State<KycScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "BELUM VERIFIKASI",
+                                'BELUM VERIFIKASI',
                                 style: GoogleFonts.spaceGrotesk(
                                   fontWeight: FontWeight.w900,
                                   fontSize: 16,
@@ -79,7 +79,7 @@ class _KycScreenState extends State<KycScreen> {
                                 ),
                               ),
                               Text(
-                                "Verifikasi KTP untuk transaksi lebih aman.",
+                                'Verifikasi KTP untuk transaksi lebih aman.',
                                 style: GoogleFonts.spaceGrotesk(
                                   fontWeight: FontWeight.w600,
                                   fontSize: 12,
@@ -95,7 +95,7 @@ class _KycScreenState extends State<KycScreen> {
             const SizedBox(height: 32),
             
             Text(
-              "DOKUMEN DIPERLUKAN",
+              'DOKUMEN DIPERLUKAN',
               style: GoogleFonts.spaceGrotesk(
                 fontWeight: FontWeight.w900,
                 fontSize: 18,
@@ -107,8 +107,8 @@ class _KycScreenState extends State<KycScreen> {
             isLoading
                 ? const BrutalSkeleton(width: double.infinity, height: 180)
                 : _buildUploadBox(
-                    title: "Upload Foto KTP",
-                    subtitle: "Pastikan teks terbaca jelas",
+                    title: 'Upload Foto KTP',
+                    subtitle: 'Pastikan teks terbaca jelas',
                     icon: Icons.badge_outlined,
                     onTap: () {},
                   ),
@@ -117,8 +117,8 @@ class _KycScreenState extends State<KycScreen> {
             isLoading
                 ? const BrutalSkeleton(width: double.infinity, height: 180)
                 : _buildUploadBox(
-                    title: "Upload Selfie dengan KTP",
-                    subtitle: "Wajah dan KTP harus terlihat",
+                    title: 'Upload Selfie dengan KTP',
+                    subtitle: 'Wajah dan KTP harus terlihat',
                     icon: Icons.camera_front_outlined,
                     onTap: () {},
                   ),
@@ -128,7 +128,7 @@ class _KycScreenState extends State<KycScreen> {
             isLoading
                 ? const BrutalSkeleton(width: double.infinity, height: 56)
                 : BrutalistButton(
-                    text: "KIRIM DOKUMEN",
+                    text: 'KIRIM DOKUMEN',
                     onPressed: () {
                       // Submit logic
                     },
@@ -138,7 +138,7 @@ class _KycScreenState extends State<KycScreen> {
             const SizedBox(height: 20),
             Center(
               child: Text(
-                "Data Anda aman & terenkripsi",
+                'Data Anda aman & terenkripsi',
                 style: GoogleFonts.spaceGrotesk(
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
@@ -202,7 +202,7 @@ class _KycScreenState extends State<KycScreen> {
                 border: Border.all(color: AppColors.black, width: 1.5),
               ),
               child: Text(
-                "PILIH FILE",
+                'PILIH FILE',
                 style: GoogleFonts.spaceGrotesk(
                   fontWeight: FontWeight.w900,
                   fontSize: 12,
