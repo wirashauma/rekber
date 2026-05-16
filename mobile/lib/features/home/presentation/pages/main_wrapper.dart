@@ -1,16 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:rekber/core/constants/app_colors.dart';
 import 'package:rekber/core/widgets/brutalist_widgets.dart';
 import 'home_page.dart';
-import '../../../../core/constants/app_text_styles.dart';
 import '../../../transaction/presentation/pages/buat_room_screen.dart';
 import '../../../transaction/presentation/pages/history_page.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
-import '../../../auth/presentation/bloc/auth_bloc.dart';
-import '../../../auth/presentation/bloc/auth_state.dart';
-import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../chat/presentation/pages/ai_assistant_screen.dart';
 
 class MainWrapper extends StatefulWidget {
