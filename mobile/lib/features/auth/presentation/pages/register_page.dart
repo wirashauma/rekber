@@ -19,12 +19,14 @@ class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -103,6 +105,11 @@ class _RegisterPageState extends State<RegisterPage> {
                         controller: _nameController,
                         hintText: 'Nama Lengkap',
                         prefixIcon: Icons.person_outline,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Nama wajib diisi.';
+                          if (value.length < 2) return 'Nama minimal 2 karakter.';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       BrutalistTextField(
@@ -110,6 +117,24 @@ class _RegisterPageState extends State<RegisterPage> {
                         hintText: 'Masukkan Email',
                         prefixIcon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Email wajib diisi.';
+                          final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                          if (!emailRegex.hasMatch(value)) return 'Format email tidak valid.';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      BrutalistTextField(
+                        controller: _phoneController,
+                        hintText: 'Nomor WhatsApp',
+                        prefixIcon: Icons.phone_outlined,
+                        keyboardType: TextInputType.phone,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Nomor HP wajib diisi.';
+                          if (value.length < 10) return 'Nomor HP tidak valid.';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       BrutalistTextField(
@@ -117,6 +142,14 @@ class _RegisterPageState extends State<RegisterPage> {
                         hintText: 'Masukkan Password',
                         prefixIcon: Icons.lock_outline,
                         obscureText: true,
+                        validator: (value) {
+                          if (value == null || value.isEmpty) return 'Password wajib diisi.';
+                          if (value.length < 8) return 'Password minimal 8 karakter.';
+                          if (!RegExp(r'[A-Z]').hasMatch(value)) return 'Harus ada huruf besar.';
+                          if (!RegExp(r'[a-z]').hasMatch(value)) return 'Harus ada huruf kecil.';
+                          if (!RegExp(r'[0-9]').hasMatch(value)) return 'Harus ada angka.';
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 40),
                       BlocBuilder<AuthBloc, AuthState>(
@@ -194,7 +227,7 @@ class _RegisterPageState extends State<RegisterPage> {
             email: _emailController.text.trim(),
             password: _passwordController.text,
             fullName: _nameController.text.trim(),
-            phone: '', // Optional or add field if needed
+            phone: _phoneController.text.trim(),
           ));
     }
   }
