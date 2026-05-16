@@ -1,15 +1,22 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../domain/entities/user_entity.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
-/// Auth BLoC — Manages authentication state and role switching
+/// Auth BLoC — Manages authentication state using Firebase Auth & Custom Backend
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final SupabaseClient _supabase;
+  final FirebaseAuth _firebaseAuth;
+  final ApiService _apiService;
 
-  AuthBloc({required SupabaseClient supabaseClient})
-      : _supabase = supabaseClient,
+  AuthBloc({
+    required FirebaseAuth firebaseAuth,
+    required ApiService apiService,
+  })  : _firebaseAuth = firebaseAuth,
+        _apiService = apiService,
         super(AuthInitial()) {
     on<AuthCheckRequested>(_onCheckAuth);
     on<AuthLoginRequested>(_onLogin);
@@ -24,20 +31,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
 
-    final session = _supabase.auth.currentSession;
-    if (session == null) {
+    final currentUser = _firebaseAuth.currentUser;
+    if (currentUser == null) {
       emit(AuthUnauthenticated());
       return;
     }
 
     try {
-      final userData = await _supabase
-          .from('users')
-          .select()
-          .eq('id', session.user.id)
-          .single();
-
-      final user = _mapToEntity(userData);
+      // Sync/Fetch user data from custom backend using UID
+      final response = await _apiService.get('/auth/me');
+      final user = _mapToEntity(response['data']);
       emit(AuthAuthenticated(user: user, activeRole: user.role));
     } catch (e) {
       emit(AuthUnauthenticated());
@@ -50,44 +53,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
 
-    // ── QUICK LOGIN BYPASS (For testing/mock purposes) ──
-    if (event.email == 'test@rekber.com' || event.email == 'admin@rekber.com') {
-      await Future.delayed(const Duration(seconds: 1)); // Simulate network
-      final user = UserEntity(
-        id: event.email == 'admin@rekber.com' ? 'admin-123' : 'user-123',
-        email: event.email,
-        fullName: event.email == 'admin@rekber.com' ? 'Admin Rekber' : 'Rizky Streamer',
-        role: event.email == 'admin@rekber.com' ? 'admin' : 'user',
-        kycStatus: 'verified',
-        isActive: true,
-        createdAt: DateTime.now(),
-      );
-      emit(AuthAuthenticated(user: user, activeRole: user.role));
-      return;
-    }
-
     try {
-      final response = await _supabase.auth.signInWithPassword(
+      // 1. Sign in with Firebase
+      final credential = await _firebaseAuth.signInWithEmailAndPassword(
         email: event.email,
         password: event.password,
       );
 
-      if (response.user == null) {
-        emit(const AuthError(message: 'Login gagal. Periksa email dan password.'));
-        return;
+      // 2. Authenticate with Custom Backend to get JWT
+      final response = await _apiService.post('/auth/login', {
+        'email': event.email,
+        'password': event.password, // Still needed for backend auth/sync if not using Firebase verify
+        'firebaseUid': credential.user!.uid,
+      });
+
+      final token = response['data']['token'];
+      await _apiService.saveToken(token);
+
+      // 3. Update FCM Token on backend
+      final fcmToken = await NotificationService().getToken();
+      if (fcmToken != null) {
+        await _apiService.post('/auth/update-fcm', {
+          'fcmToken': fcmToken,
+        });
       }
 
-      // Fetch user profile
-      final userData = await _supabase
-          .from('users')
-          .select()
-          .eq('id', response.user!.id)
-          .single();
-
-      final user = _mapToEntity(userData);
+      final user = _mapToEntity(response['data']['user']);
       emit(AuthAuthenticated(user: user, activeRole: user.role));
-    } on AuthException catch (e) {
-      emit(AuthError(message: _getAuthErrorMessage(e.message)));
+    } on FirebaseAuthException catch (e) {
+      emit(AuthError(message: _getAuthErrorMessage(e.code)));
+    } on ApiException catch (e) {
+      emit(AuthError(message: e.message));
     } catch (e) {
       emit(const AuthError(message: 'Terjadi kesalahan. Coba lagi nanti.'));
     }
@@ -100,34 +96,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
 
     try {
-      final response = await _supabase.auth.signUp(
+      // 1. Create user in Firebase Auth
+      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: event.email,
         password: event.password,
-        data: {
-          'full_name': event.fullName,
-          'phone': event.phone,
-        },
       );
 
-      if (response.user == null) {
-        emit(const AuthError(message: 'Registrasi gagal.'));
-        return;
+      final fcmToken = await NotificationService().getToken();
+
+      // 2. Prepare payload for custom Backend API (PostgreSQL)
+      final payload = {
+        'firebaseUid': credential.user!.uid,
+        'email': event.email,
+        'name': event.fullName,
+        'phone': event.phone,
+        'password': event.password, // Backend might still want this for initial setup or custom auth
+        'fcmToken': fcmToken,
+      };
+
+      if (kDebugMode) {
+        print('--- REGISTRATION PAYLOAD ---');
+        print(payload);
+        print('----------------------------');
       }
 
-      // Create user profile in public.users table
-      await _supabase.from('users').insert({
-        'id': response.user!.id,
-        'email': event.email,
-        'full_name': event.fullName,
-        'phone': event.phone,
-        'role': 'buyer', // Default role
-      });
+      // 3. Send to custom backend
+      await _apiService.post('/auth/register', payload);
 
       emit(const AuthRegistrationSuccess(
-        message: 'Registrasi berhasil! Silakan cek email untuk verifikasi.',
+        message: 'Registrasi berhasil! Silakan login.',
       ));
-    } on AuthException catch (e) {
-      emit(AuthError(message: _getAuthErrorMessage(e.message)));
+    } on FirebaseAuthException catch (e) {
+      emit(AuthError(message: _getAuthErrorMessage(e.code)));
+    } on ApiException catch (e) {
+      emit(AuthError(message: e.message));
     } catch (e) {
       emit(const AuthError(message: 'Registrasi gagal. Coba lagi nanti.'));
     }
@@ -137,7 +139,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    await _supabase.auth.signOut();
+    await _firebaseAuth.signOut();
+    await _apiService.clearToken();
     emit(AuthUnauthenticated());
   }
 
@@ -156,9 +159,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   UserEntity _mapToEntity(Map<String, dynamic> data) {
     return UserEntity(
-      id: data['id'],
-      email: data['email'],
-      fullName: data['full_name'] ?? '',
+      id: data['id']?.toString() ?? '',
+      email: data['email'] ?? '',
+      fullName: data['name'] ?? data['full_name'] ?? '',
       phone: data['phone'],
       avatarUrl: data['avatar_url'],
       role: data['role'] ?? 'buyer',
@@ -166,20 +169,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       idCardUrl: data['id_card_url'],
       selfieUrl: data['selfie_url'],
       isActive: data['is_active'] ?? true,
-      createdAt: DateTime.parse(data['created_at']),
+      createdAt: data['created_at'] != null 
+        ? DateTime.parse(data['created_at']) 
+        : DateTime.now(),
     );
   }
 
-  String _getAuthErrorMessage(String error) {
-    if (error.contains('Invalid login')) {
-      return 'Email atau password salah.';
+  String _getAuthErrorMessage(String code) {
+    switch (code) {
+      case 'user-not-found':
+        return 'Email tidak terdaftar.';
+      case 'wrong-password':
+        return 'Password salah.';
+      case 'email-already-in-use':
+        return 'Email sudah digunakan.';
+      case 'invalid-email':
+        return 'Format email tidak valid.';
+      case 'weak-password':
+        return 'Password terlalu lemah.';
+      default:
+        return 'Terjadi kesalahan autentikasi.';
     }
-    if (error.contains('Email not confirmed')) {
-      return 'Email belum diverifikasi. Cek inbox Anda.';
-    }
-    if (error.contains('already registered')) {
-      return 'Email sudah terdaftar. Silakan login.';
-    }
-    return 'Terjadi kesalahan: $error';
   }
 }
