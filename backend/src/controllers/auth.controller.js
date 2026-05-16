@@ -51,4 +51,20 @@ const login = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login };
+const updateFcm = async (req, res, next) => {
+  try {
+    const { fcmToken } = req.body;
+    const userId = req.user.id;
+
+    await authService.updateFcm(userId, fcmToken);
+
+    res.status(200).json({
+      success: true,
+      message: 'FCM Token berhasil diperbarui.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, updateFcm };
