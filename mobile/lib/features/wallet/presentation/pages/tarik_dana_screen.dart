@@ -13,7 +13,7 @@ class TarikDanaScreen extends StatefulWidget {
 
 class _TarikDanaScreenState extends State<TarikDanaScreen> {
   final TextEditingController _amountController = TextEditingController();
-  String _selectedAccount = 'BCA - 12345678 a.n. Rizky';
+  final String _selectedAccount = 'BCA - 12345678 a.n. Rizky';
   bool isLoading = true;
 
   @override
