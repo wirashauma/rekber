@@ -72,29 +72,29 @@ class BrutalSkeletonCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: const Row(
         children: [
           // Leading Icon/Avatar Skeleton
-          const BrutalSkeletonContent(
+          BrutalSkeletonContent(
             width: 50,
             height: 50,
             borderRadius: 4,
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           // Text Content Skeleton
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const BrutalSkeletonContent(width: 150, height: 16),
-                const SizedBox(height: 8),
-                const BrutalSkeletonContent(width: 100, height: 12),
+                BrutalSkeletonContent(width: 150, height: 16),
+                SizedBox(height: 8),
+                BrutalSkeletonContent(width: 100, height: 12),
               ],
             ),
           ),
           // Trailing Skeleton
-          const BrutalSkeletonContent(width: 60, height: 20),
+          BrutalSkeletonContent(width: 60, height: 20),
         ],
       ),
     );
