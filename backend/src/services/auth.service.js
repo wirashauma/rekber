@@ -14,21 +14,15 @@ const { ApiError } = require('../middlewares/error.middleware');
 /**
  * Register a new user.
  *
- * Steps:
- *   1. Check if email is already registered.
- *   2. Hash the password with bcrypt.
- *   3. Create the user in the database.
- *   4. Return the user data (excluding password).
- *
- * @param {Object} data - { name, email, password }
+ * @param {Object} data - { name, email, password, firebaseUid, fcmToken }
  * @returns {Object} Created user (without password)
  */
-const register = async ({ name, email, password }) => {
+const register = async ({ name, email, password, firebaseUid, fcmToken }) => {
   // 1. Check for existing user with the same email
   const existingUser = await prisma.user.findUnique({ where: { email } });
 
   if (existingUser) {
-    throw new ApiError(409, 'Email sudah terdaftar. Gunakan email lain.'); // Email already registered.
+    throw new ApiError(409, 'Email sudah terdaftar. Gunakan email lain.');
   }
 
   // 2. Hash the password
@@ -40,19 +34,34 @@ const register = async ({ name, email, password }) => {
       name,
       email,
       password: hashedPassword,
+      firebaseUid,
+      fcmToken,
     },
-    // Select only non-sensitive fields to return
     select: {
       id: true,
       name: true,
       email: true,
       role: true,
       balance: true,
+      firebaseUid: true,
+      fcmToken: true,
       createdAt: true,
     },
   });
 
   return user;
+};
+
+/**
+ * Update FCM token for a user.
+ * @param {string} userId
+ * @param {string} fcmToken
+ */
+const updateFcm = async (userId, fcmToken) => {
+  return await prisma.user.update({
+    where: { id: userId },
+    data: { fcmToken },
+  });
 };
 
 /**
@@ -102,4 +111,4 @@ const login = async ({ email, password }) => {
   };
 };
 
-module.exports = { register, login };
+module.exports = { register, login, updateFcm };
