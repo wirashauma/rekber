@@ -27,14 +27,14 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
   bool isLoading = true;
 
   final List<String> _categories = [
-    "Akun Game",
-    "Item Game",
-    "Jasa Joki",
-    "Sparepart Motor",
-    "Alat Elektronik",
-    "Jasa Desain",
-    "Pakaian/Sepatu",
-    "Lainnya"
+    'Akun Game',
+    'Item Game',
+    'Jasa Joki',
+    'Sparepart Motor',
+    'Alat Elektronik',
+    'Jasa Desain',
+    'Pakaian/Sepatu',
+    'Lainnya'
   ];
 
   @override
