@@ -420,39 +420,66 @@ class BrutalistTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.black, width: 2.5),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.black,
-            offset: Offset(4, 4),
-            blurRadius: 0,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.white,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppColors.black, width: 2.5),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.black,
+                offset: Offset(4, 4),
+                blurRadius: 0,
+              ),
+            ],
           ),
-        ],
-      ),
-      child: TextFormField(
-        controller: controller,
-        obscureText: obscureText,
-        keyboardType: keyboardType,
-        validator: validator,
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          color: AppColors.black,
-        ),
-        decoration: InputDecoration(
-          hintText: hintText,
-          hintStyle: TextStyle(
-            color: AppColors.black.withValues(alpha: 0.5),
-            fontWeight: FontWeight.bold,
+          child: TextFormField(
+            controller: controller,
+            obscureText: obscureText,
+            keyboardType: keyboardType,
+            validator: validator,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.black,
+            ),
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: TextStyle(
+                color: AppColors.black.withValues(alpha: 0.5),
+                fontWeight: FontWeight.bold,
+              ),
+              prefixIcon: Icon(prefixIcon, color: AppColors.black),
+              border: InputBorder.none,
+              errorStyle: const TextStyle(height: 0, fontSize: 0), // Hide default error text
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            ),
           ),
-          prefixIcon: Icon(prefixIcon, color: AppColors.black),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
-      ),
+        // Custom Error Message below the brutalist box
+        FormField<String>(
+          validator: validator,
+          initialValue: controller?.text,
+          builder: (state) {
+            if (state.hasError) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 8.0, left: 4.0),
+                child: Text(
+                  state.errorText ?? '',
+                  style: const TextStyle(
+                    color: AppColors.error,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12,
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        ),
+      ],
     );
   }
 }
