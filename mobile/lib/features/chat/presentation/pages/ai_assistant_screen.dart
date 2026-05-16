@@ -340,7 +340,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             color: Colors.white,
             onTap: () {
               // Simulate image picking
-              _handleSendMessage("[Gambar Dipilih: Struk Pembayaran]");
+              _handleSendMessage('[Gambar Dipilih: Struk Pembayaran]');
             },
           ),
           const SizedBox(width: 12),
