@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "998874504082",
+    "project_id": "rekber-app-cec0d",
+    "storage_bucket": "rekber-app-cec0d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998874504082:android:c65878cccbfad9cd763f4b",
+        "android_client_info": {
+          "package_name": "rekber.id"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "998874504082-djr4dt8b6h0u5934kd206nmnvc14s8vp.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDDNbYhjj_U8Hkftvg4VSbM_F4F-UBk5Ss"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "998874504082-djr4dt8b6h0u5934kd206nmnvc14s8vp.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
