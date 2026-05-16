@@ -58,7 +58,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "GANTI PASSWORD",
+              'GANTI PASSWORD',
               style: GoogleFonts.spaceGrotesk(
                 fontWeight: FontWeight.w900,
                 fontSize: 18,
@@ -73,25 +73,25 @@ class _SecurityScreenState extends State<SecurityScreen> {
                 child: BrutalSkeleton(width: double.infinity, height: 56),
               ))
             else ...[
-              _buildLabel("Password Lama"),
+              _buildLabel('Password Lama'),
               const BrutalistTextField(
-                hintText: "Masukkan password saat ini",
+                hintText: 'Masukkan password saat ini',
                 prefixIcon: Icons.lock_outline_rounded,
                 obscureText: true,
               ),
               const SizedBox(height: 20),
               
-              _buildLabel("Password Baru"),
+              _buildLabel('Password Baru'),
               const BrutalistTextField(
-                hintText: "Minimal 8 karakter",
+                hintText: 'Minimal 8 karakter',
                 prefixIcon: Icons.lock_reset_rounded,
                 obscureText: true,
               ),
               const SizedBox(height: 20),
               
-              _buildLabel("Konfirmasi Password Baru"),
+              _buildLabel('Konfirmasi Password Baru'),
               const BrutalistTextField(
-                hintText: "Ulangi password baru",
+                hintText: 'Ulangi password baru',
                 prefixIcon: Icons.verified_user_outlined,
                 obscureText: true,
               ),
@@ -100,7 +100,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             const SizedBox(height: 40),
             
             Text(
-              "TRANSAKSI",
+              'TRANSAKSI',
               style: GoogleFonts.spaceGrotesk(
                 fontWeight: FontWeight.w900,
                 fontSize: 18,
@@ -122,7 +122,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
                         const Icon(Icons.pin_rounded, color: AppColors.black),
                         const SizedBox(width: 16),
                         Text(
-                          "Ubah PIN Transaksi",
+                          'Ubah PIN Transaksi',
                           style: GoogleFonts.spaceGrotesk(
                             fontWeight: FontWeight.w900,
                             fontSize: 16,
@@ -139,7 +139,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
             isLoading
                 ? const BrutalSkeleton(width: double.infinity, height: 56)
                 : BrutalistButton(
-                    text: "PERBARUI KEAMANAN",
+                    text: 'PERBARUI KEAMANAN',
                     onPressed: () {
                       // Update security logic
                     },
