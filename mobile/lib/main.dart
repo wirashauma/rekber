@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'config/supabase/supabase_config.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'core/services/notification_service.dart';
 import 'injection_container.dart';
 import 'app.dart';
 
@@ -22,8 +23,11 @@ void main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  // Initialize Supabase
-  await SupabaseConfig.initialize();
+  // Initialize Firebase
+  await Firebase.initializeApp();
+
+  // Initialize Notifications
+  await NotificationService().initialize();
 
   // Initialize dependency injection
   await initDependencies();
