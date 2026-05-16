@@ -43,17 +43,17 @@ class AdminFinancialScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             _buildLabel('Batas Transaksi (IDR)'),
-            Row(
+            const Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: BrutalistTextField(
                     hintText: 'Min: 10.000',
                     prefixIcon: Icons.arrow_downward_rounded,
                     keyboardType: TextInputType.number,
                   ),
                 ),
-                const SizedBox(width: 12),
-                const Expanded(
+                SizedBox(width: 12),
+                Expanded(
                   child: BrutalistTextField(
                     hintText: 'Max: 100.000.000',
                     prefixIcon: Icons.arrow_upward_rounded,
