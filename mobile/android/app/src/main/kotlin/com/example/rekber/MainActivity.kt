@@ -1,5 +1,0 @@
-package com.example.rekber
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity : FlutterActivity()
