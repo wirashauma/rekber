@@ -54,8 +54,8 @@ class _HistoryPageState extends State<HistoryPage> {
           final trx = transactions[index];
           // Mock some chat data
           final lastMessage = index % 2 == 0 
-              ? "Penjual: Akun sudah siap gan, silakan cek detailnya..." 
-              : "Pembeli: Oke, saya proses pembayarannya sekarang.";
+              ? 'Penjual: Akun sudah siap gan, silakan cek detailnya...' 
+              : 'Pembeli: Oke, saya proses pembayarannya sekarang.';
           final hasUnread = index < 2;
 
           return Padding(
@@ -124,7 +124,7 @@ class _HistoryPageState extends State<HistoryPage> {
                         _buildStatusBadge(trx['status']),
                         if (hasUnread) ...[
                           const SizedBox(height: 8),
-                          _buildUnreadBadge("2"),
+                          _buildUnreadBadge('2'),
                         ],
                       ],
                     ),
