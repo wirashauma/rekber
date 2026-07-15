@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../data/models/user_model.dart';
 import '../../domain/entities/user_entity.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
@@ -174,21 +175,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   UserEntity _mapToEntity(Map<String, dynamic> data) {
-    return UserEntity(
-      id: data['id']?.toString() ?? '',
-      email: data['email'] ?? '',
-      fullName: data['name'] ?? data['full_name'] ?? '',
-      phone: data['phone'],
-      avatarUrl: data['avatar_url'],
-      role: data['role'] ?? 'buyer',
-      kycStatus: data['kyc_status'] ?? 'none',
-      idCardUrl: data['id_card_url'],
-      selfieUrl: data['selfie_url'],
-      isActive: data['is_active'] ?? true,
-      createdAt: data['created_at'] != null 
-        ? DateTime.parse(data['created_at']) 
-        : DateTime.now(),
-    );
+    return UserModel.fromJson(data);
   }
 
   String _getAuthErrorMessage(String code) {

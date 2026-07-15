@@ -3,7 +3,7 @@ import 'package:rekber/core/constants/app_colors.dart';
 import 'package:rekber/core/widgets/brutalist_widgets.dart';
 import 'home_page.dart';
 import '../../../transaction/presentation/pages/buat_room_screen.dart';
-import '../../../transaction/presentation/pages/history_page.dart';
+import '../../../transaction/presentation/pages/riwayat_screen.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
 import '../../../chat/presentation/pages/ai_assistant_screen.dart';
 
@@ -28,7 +28,7 @@ class _MainWrapperState extends State<MainWrapper> {
   Widget build(BuildContext context) {
     final List<Widget> pages = [
       const HomePage(),
-      const HistoryPage(), // Temporary "Transaksi" page
+      const RiwayatScreen(),
       const BuatRoomScreen(), // FAB page
       const AiAssistantScreen(),
       const SettingsPage(),

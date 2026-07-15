@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/widgets/brutal_skeleton.dart';
 import '../../../../core/widgets/rekber_balance_card.dart';
-import '../../../../core/services/mock_data_service.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../../../transaction/data/models/transaction_model.dart';
+import '../../../../injection_container.dart';
+import '../../../../core/services/api_service.dart';
 
 import '../widgets/auto_scroll_banner.dart';
 
@@ -25,16 +28,35 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   bool isLoading = true;
+  List<TransactionModel> _transactions = [];
 
   @override
   void initState() {
     super.initState();
-    // Simulate initial loading or wait for Bloc
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
-        setState(() => isLoading = false);
+    _refreshData();
+  }
+
+  Future<void> _refreshData() async {
+    setState(() => isLoading = true);
+    context.read<AuthBloc>().add(AuthCheckRequested());
+    await _fetchTransactions();
+    if (mounted) {
+      setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _fetchTransactions() async {
+    try {
+      final response = await sl<ApiService>().get('/transactions');
+      if (response != null && response['data'] != null) {
+        final List<dynamic> data = response['data'];
+        setState(() {
+          _transactions = data.map((e) => TransactionModel.fromJson(e)).toList();
+        });
       }
-    });
+    } catch (e) {
+      debugPrint('Error fetching transactions: $e');
+    }
   }
 
   @override
@@ -47,9 +69,13 @@ class _HomePageState extends State<HomePage> {
         return Scaffold(
           backgroundColor: AppColors.background,
           body: SafeArea(
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
+            child: RefreshIndicator(
+              onRefresh: _refreshData,
+              color: AppColors.black,
+              backgroundColor: AppColors.white,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                slivers: [
                 // ── Custom Header ──
                 SliverToBoxAdapter(
                   child: Padding(
@@ -202,96 +228,119 @@ class _HomePageState extends State<HomePage> {
                       return const BrutalSkeletonCard();
                     }
 
-                    // Mapping dummy to entity to demonstrate dynamic properties
-                    final trxData = MockDataService.dummyTransactions[index];
-                    final trx = TransactionModel.fromJson(trxData);
+                    if (_transactions.isEmpty) {
+                      return Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: AppColors.white,
+                          border: Border.all(color: AppColors.black, width: 2.5),
+                          boxShadow: const [
+                            BoxShadow(color: AppColors.black, offset: Offset(4, 4)),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Belum ada transaksi aktif.',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final trx = _transactions[index];
                     
                     final lightColors = [AppColors.white, AppColors.paleYellow, AppColors.lightBlue];
                     final bgColor = lightColors[index % lightColors.length];
 
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 20.0),
-                      child: BrutalistCard(
-                        backgroundColor: bgColor,
-                        padding: const EdgeInsets.all(16),
-                        shadowOffset: const Offset(4, 4),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 56,
-                              height: 56,
-                              decoration: BoxDecoration(
-                                color: AppColors.getStatusColor(trx.status),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.black, width: 3),
+                      child: BrutalistBounce(
+                        onTap: () => context.push('/chat/${trx.id}'),
+                        child: BrutalistCard(
+                          backgroundColor: bgColor,
+                          padding: const EdgeInsets.all(16),
+                          shadowOffset: const Offset(4, 4),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 56,
+                                height: 56,
+                                decoration: BoxDecoration(
+                                  color: AppColors.getStatusColor(trx.status),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.black, width: 3),
+                                ),
+                                child: const Icon(Icons.receipt_long_rounded, color: AppColors.black, size: 32),
                               ),
-                              child: const Icon(Icons.receipt_long_rounded, color: AppColors.black, size: 32),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    trx.description ?? 'No Description',
-                                    style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Tujuan: @${trx.sellerName ?? 'Unknown'} • ${_formatDate(trx.createdAt)}',
-                                    style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  if (trx.status == 'escrow' || trx.status == 'paid') ...[
-                                    const SizedBox(height: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.black,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: const Text(
-                                        '⏳ Garansi Aktif',
-                                        style: TextStyle(
-                                          color: AppColors.white,
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.w900,
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      trx.description ?? 'No Description',
+                                      style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Tujuan: @${trx.sellerName ?? 'Unknown'} • ${_formatDate(trx.createdAt)}',
+                                      style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    if (trx.status == 'escrow' || trx.status == 'paid') ...[
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.black,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: const Text(
+                                          '⏳ Garansi Aktif',
+                                          style: TextStyle(
+                                            color: AppColors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w900,
+                                          ),
                                         ),
                                       ),
-                                    ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    CurrencyFormatter.format(trx.amount),
-                                    style: AppTextStyles.bodyMedium.copyWith(
-                                      fontWeight: FontWeight.w900,
-                                      color: AppColors.black,
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Text(
+                                      CurrencyFormatter.format(trx.amount),
+                                      style: AppTextStyles.bodyMedium.copyWith(
+                                        fontWeight: FontWeight.w900,
+                                        color: AppColors.black,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  _buildStatusIndicator(trx.status),
-                                ],
+                                    const SizedBox(height: 4),
+                                    _buildStatusIndicator(trx.status),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                     );
                   },
-                  childCount: isLoading ? 3 : MockDataService.dummyTransactions.length,
+                  childCount: isLoading ? 3 : (_transactions.isEmpty ? 1 : _transactions.length),
                 ),
               ),
             ),
@@ -300,6 +349,7 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    ),
     );
   },
 );

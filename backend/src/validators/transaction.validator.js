@@ -9,13 +9,6 @@ const { body, param } = require('express-validator');
  * Validation rules for POST /api/transactions
  */
 const createTransactionRules = [
-  body('sellerId')
-    .trim()
-    .notEmpty()
-    .withMessage('ID penjual wajib diisi.') // Seller ID is required.
-    .isUUID()
-    .withMessage('ID penjual harus berupa UUID yang valid.'), // Seller ID must be valid UUID.
-
   body('amount')
     .notEmpty()
     .withMessage('Jumlah transaksi wajib diisi.') // Amount is required.

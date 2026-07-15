@@ -10,24 +10,38 @@ const transactionService = require('../services/transaction.service');
  * POST /api/transactions
  *
  * Create a new escrow transaction.
- * The authenticated user is automatically set as the buyer.
- * Body: { sellerId, amount, itemDescription }
+ * Body: { sellerId, buyerId, amount, itemDescription }
  */
 const createTransaction = async (req, res, next) => {
   try {
-    const { sellerId, amount, itemDescription } = req.body;
-    const buyerId = req.user.id; // From JWT middleware
+    const { sellerId, buyerId, amount, itemDescription } = req.body;
+    
+    let resolvedBuyerId = buyerId;
+    let resolvedSellerId = sellerId;
+
+    if (!resolvedBuyerId && !resolvedSellerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lawan transaksi (buyerId atau sellerId) harus ditentukan.',
+      });
+    }
+
+    if (resolvedSellerId && !resolvedBuyerId) {
+      resolvedBuyerId = req.user.id; // Initiator is buyer
+    } else if (resolvedBuyerId && !resolvedSellerId) {
+      resolvedSellerId = req.user.id; // Initiator is seller
+    }
 
     const transaction = await transactionService.createTransaction({
-      buyerId,
-      sellerId,
+      buyerId: resolvedBuyerId,
+      sellerId: resolvedSellerId,
       amount,
       itemDescription,
     });
 
     res.status(201).json({
       success: true,
-      message: 'Transaksi escrow berhasil dibuat.', // Escrow transaction created.
+      message: 'Transaksi escrow berhasil dibuat.',
       data: transaction,
     });
   } catch (error) {
@@ -95,4 +109,18 @@ const updateTransactionStatus = async (req, res, next) => {
   }
 };
 
-module.exports = { createTransaction, getTransactionById, updateTransactionStatus };
+const getTransactions = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const transactions = await transactionService.getTransactions(userId);
+    res.status(200).json({
+      success: true,
+      message: 'Daftar transaksi berhasil diambil.',
+      data: transactions,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { createTransaction, getTransactionById, updateTransactionStatus, getTransactions };

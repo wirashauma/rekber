@@ -141,4 +141,86 @@ const forgotEmail = async ({ name, password }) => {
   throw new ApiError(401, 'Password salah.');
 };
 
-module.exports = { register, login, updateFcm, forgotEmail };
+/**
+ * Get current user data.
+ * @param {string} userId
+ * @returns {Promise<Object>} User data
+ */
+const me = async (userId) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      balance: true,
+      firebaseUid: true,
+      fcmToken: true,
+      createdAt: true,
+    },
+  });
+
+  if (!user) {
+    throw new ApiError(404, 'User tidak ditemukan.');
+  }
+
+  return user;
+};
+
+/**
+ * Update user profile details.
+ * @param {string} userId
+ * @param {Object} data - { name }
+ * @returns {Promise<Object>} Updated user data
+ */
+const updateProfile = async (userId, { name }) => {
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { name },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      balance: true,
+      firebaseUid: true,
+      fcmToken: true,
+      createdAt: true,
+    },
+  });
+
+  return updatedUser;
+};
+
+/**
+ * Search other users by email or name for transactions.
+ * @param {string} currentUserId
+ * @param {string} query
+ * @returns {Promise<Array>} List of found users
+ */
+const searchOpponent = async (currentUserId, query) => {
+  if (!query) {
+    throw new ApiError(400, 'Query pencarian tidak boleh kosong.');
+  }
+
+  const users = await prisma.user.findMany({
+    where: {
+      id: { not: currentUserId },
+      OR: [
+        { email: { equals: query.trim() } },
+        { name: { equals: query.trim(), mode: 'insensitive' } },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+    },
+    take: 5,
+  });
+
+  return users;
+};
+
+module.exports = { register, login, updateFcm, forgotEmail, me, updateProfile, searchOpponent };

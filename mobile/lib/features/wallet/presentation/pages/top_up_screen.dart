@@ -16,7 +16,7 @@ class TopUpScreen extends StatefulWidget {
 class _TopUpScreenState extends State<TopUpScreen> {
   final TextEditingController _amountController = TextEditingController();
   String _selectedMethod = 'QRIS';
-  bool isLoading = true;
+  bool isLoading = false;
 
   final List<String> _quickNominals = ['50000', '100000', '500000'];
 
@@ -58,11 +58,6 @@ class _TopUpScreenState extends State<TopUpScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
-    });
   }
 
   @override

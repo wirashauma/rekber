@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../../injection_container.dart';
+import '../../../../core/services/api_service.dart';
 
 class DetailPembayaranScreen extends StatefulWidget {
   final Map<String, dynamic> data;
@@ -19,6 +21,7 @@ class DetailPembayaranScreen extends StatefulWidget {
 class _DetailPembayaranScreenState extends State<DetailPembayaranScreen> {
   late Timer _timer;
   int _secondsRemaining = 86399; // 23:59:59
+  bool _isSubmitting = false;
 
   @override
   void initState() {
@@ -47,6 +50,34 @@ class _DetailPembayaranScreenState extends State<DetailPembayaranScreen> {
     final m = (seconds % 3600) ~/ 60;
     final s = seconds % 60;
     return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _confirmPayment() async {
+    setState(() => _isSubmitting = true);
+    try {
+      final nominal = double.tryParse(widget.data['nominal'] ?? '0') ?? 0;
+      final apiService = sl<ApiService>();
+      await apiService.post('/wallet/topup', {
+        'amount': nominal,
+      });
+      _showSuccessDialog();
+    } on ApiException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memproses top up: ${e.message}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Terjadi kesalahan koneksi.', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
   }
 
   void _showSuccessDialog() {
@@ -250,7 +281,8 @@ class _DetailPembayaranScreenState extends State<DetailPembayaranScreen> {
             const SizedBox(height: 40),
             BrutalistButton(
               text: 'SAYA SUDAH BAYAR',
-              onPressed: _showSuccessDialog,
+              isLoading: _isSubmitting,
+              onPressed: _isSubmitting ? () {} : _confirmPayment,
               backgroundColor: AppColors.neonGreen,
             ),
             const SizedBox(height: 80),

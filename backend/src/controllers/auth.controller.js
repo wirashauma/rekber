@@ -81,4 +81,46 @@ const forgotEmail = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, updateFcm, forgotEmail };
+const me = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const user = await authService.me(userId);
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const updateProfile = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const { name } = req.body;
+    const user = await authService.updateProfile(userId, { name });
+    res.status(200).json({
+      success: true,
+      message: 'Profil berhasil diperbarui.',
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+const searchOpponent = async (req, res, next) => {
+  try {
+    const currentUserId = req.user.id;
+    const { query } = req.query;
+    const users = await authService.searchOpponent(currentUserId, query);
+    res.status(200).json({
+      success: true,
+      data: users,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, updateFcm, forgotEmail, me, updateProfile, searchOpponent };

@@ -245,10 +245,34 @@ const updateTransactionStatus = async (transactionId, newStatus, userId, userRol
   return updatedTransaction;
 };
 
+/**
+ * Get all transactions associated with a user (buyer or seller).
+ * @param {string} userId
+ * @returns {Promise<Array>} List of transactions
+ */
+const getTransactions = async (userId) => {
+  return await prisma.transaction.findMany({
+    where: {
+      OR: [
+        { buyerId: userId },
+        { sellerId: userId },
+      ],
+    },
+    include: {
+      buyer:  { select: { id: true, name: true, email: true } },
+      seller: { select: { id: true, name: true, email: true } },
+    },
+    orderBy: {
+      createdAt: 'desc',
+    },
+  });
+};
+
 module.exports = {
   createTransaction,
   getTransactionById,
   updateTransactionStatus,
+  getTransactions,
   VALID_TRANSITIONS,
   TRANSITION_AUTHORITY,
 };

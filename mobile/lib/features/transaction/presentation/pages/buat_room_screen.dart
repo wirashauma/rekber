@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +6,8 @@ import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/utils/currency_formatter.dart';
 
 import '../../../../core/widgets/brutal_skeleton.dart';
+import '../../../../injection_container.dart';
+import '../../../../core/services/api_service.dart';
 
 class BuatRoomScreen extends StatefulWidget {
   const BuatRoomScreen({super.key});
@@ -24,7 +25,8 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
 
   double _nominal = 0;
   double _fee = 0;
-  bool isLoading = true;
+  bool isLoading = false;
+  bool _isSubmitting = false;
 
   final List<String> _categories = [
     'Akun Game',
@@ -41,11 +43,6 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
   void initState() {
     super.initState();
     _amountController.addListener(_updateCalculations);
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
-    });
   }
 
   @override
@@ -64,19 +61,75 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
     });
   }
 
-  String _generateSecureCode() {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-    final random = Random();
-    String part() => String.fromCharCodes(
-          Iterable.generate(4, (_) => chars.codeUnitAt(random.nextInt(chars.length))),
-        );
-    return 'REKBER-${part()}-${part()}-${part()}';
+  Future<void> _createRoom() async {
+    final opponentInput = _opponentController.text.trim();
+    final descInput = _categoryController.text.trim();
+
+    if (_nominal <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nominal transaksi wajib diisi dan minimal Rp 1.000.')),
+      );
+      return;
+    }
+    if (opponentInput.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lawan transaksi wajib diisi.')),
+      );
+      return;
+    }
+    if (descInput.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Kategori/deskripsi wajib diisi.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final apiService = sl<ApiService>();
+
+      final searchRes = await apiService.get('/auth/search-opponent?query=$opponentInput');
+      if (searchRes == null || searchRes['data'] == null || (searchRes['data'] as List).isEmpty) {
+        throw ApiException(statusCode: 404, message: 'Lawan transaksi tidak ditemukan.');
+      }
+
+      final opponentId = searchRes['data'][0]['id'];
+
+      final payload = {
+        'amount': _nominal,
+        'itemDescription': descInput,
+        if (_peran == 'Pembeli') 'sellerId': opponentId,
+        if (_peran == 'Penjual') 'buyerId': opponentId,
+      };
+
+      final txRes = await apiService.post('/transactions', payload);
+      final newTxCode = txRes['data']['tx_code'] ?? txRes['data']['id'] ?? 'SUKSES';
+
+      _showSuccessDialog(newTxCode);
+    } on ApiException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal membuat transaksi: ${e.message}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Terjadi kesalahan koneksi.', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
   }
 
-  void _showSuccessDialog() {
-    final code = _generateSecureCode();
+  void _showSuccessDialog(String code) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => Dialog(
         backgroundColor: Colors.transparent,
         child: BrutalistCard(
@@ -132,7 +185,10 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
               BrutalistButton(
                 text: 'TUTUP',
                 backgroundColor: AppColors.white,
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pop(context);
+                },
               ),
             ],
           ),
@@ -342,8 +398,9 @@ class _BuatRoomScreenState extends State<BuatRoomScreen> {
             // 5. Action Button
             BrutalistButton(
               text: 'BUAT RUANG & GENERATE KODE',
+              isLoading: _isSubmitting,
               backgroundColor: AppColors.tealGreen,
-              onPressed: _showSuccessDialog,
+              onPressed: _isSubmitting ? () {} : _createRoom,
             ),
             const SizedBox(height: 80), 
           ],

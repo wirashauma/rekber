@@ -22,6 +22,10 @@ router.use(authenticate);
 // Create a new escrow transaction (authenticated user = buyer)
 router.post('/', createTransactionRules, validate, transactionController.createTransaction);
 
+// GET /api/transactions
+// Get list of all transactions for the authenticated user
+router.get('/', transactionController.getTransactions);
+
 // GET /api/transactions/:id
 // Get details of a specific transaction
 router.get('/:id', getTransactionRules, validate, transactionController.getTransactionById);

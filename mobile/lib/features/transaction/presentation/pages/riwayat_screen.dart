@@ -6,7 +6,8 @@ import '../../../../core/widgets/brutal_skeleton.dart';
 import '../../../../core/utils/currency_formatter.dart';
 import '../../domain/entities/transaction_entity.dart';
 import '../../data/models/transaction_model.dart';
-import '../../../../core/services/mock_data_service.dart';
+import '../../../../injection_container.dart';
+import '../../../../core/services/api_service.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -25,18 +26,23 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     _loadData();
   }
 
-  void _loadData() {
-    Future.delayed(const Duration(seconds: 1), () {
-      if (mounted) {
+  Future<void> _loadData() async {
+    setState(() => isLoading = true);
+    try {
+      final response = await sl<ApiService>().get('/transactions');
+      if (response != null && response['data'] != null) {
+        final List<dynamic> data = response['data'];
         setState(() {
-          // Mapping dummy data to entities to demonstrate dynamic properties
-          riwayat = MockDataService.dummyTransactions
-              .map((e) => TransactionModel.fromJson(e))
-              .toList();
-          isLoading = false;
+          riwayat = data.map((e) => TransactionModel.fromJson(e)).toList();
         });
       }
-    });
+    } catch (e) {
+      debugPrint('Error loading history: $e');
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
   }
 
   @override

@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
-
 import '../../../../core/widgets/brutal_skeleton.dart';
+import '../../../../injection_container.dart';
+import '../../../../core/services/api_service.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -13,16 +18,73 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  bool isLoading = true;
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  bool isLoading = false;
+  bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
-    });
+    final authState = context.read<AuthBloc>().state;
+    if (authState is AuthAuthenticated) {
+      _nameController.text = authState.user.fullName;
+      _emailController.text = authState.user.email;
+      _phoneController.text = authState.user.phone ?? '';
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveProfile() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nama lengkap wajib diisi.')),
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+    try {
+      final apiService = sl<ApiService>();
+      await apiService.put('/auth/profile', {
+        'name': name,
+      });
+
+      context.read<AuthBloc>().add(AuthCheckRequested());
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profil berhasil diperbarui!', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.tealGreen,
+        ),
+      );
+      Navigator.pop(context);
+    } on ApiException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal memperbarui profil: ${e.message}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Terjadi kesalahan koneksi.', style: TextStyle(fontWeight: FontWeight.bold)),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      setState(() => _isSubmitting = false);
+    }
   }
 
   @override
@@ -119,14 +181,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ))
             else ...[
               _buildLabel('Nama Lengkap'),
-              const BrutalistTextField(
+              BrutalistTextField(
+                controller: _nameController,
                 hintText: 'Masukkan nama lengkap',
                 prefixIcon: Icons.person_outline_rounded,
               ),
               const SizedBox(height: 24),
               
               _buildLabel('Email'),
-              const BrutalistTextField(
+              BrutalistTextField(
+                controller: _emailController,
                 hintText: 'Masukkan email aktif',
                 prefixIcon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
@@ -134,7 +198,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               const SizedBox(height: 24),
               
               _buildLabel('Nomor Telepon'),
-              const BrutalistTextField(
+              BrutalistTextField(
+                controller: _phoneController,
                 hintText: 'Contoh: 08123456789',
                 prefixIcon: Icons.phone_android_rounded,
                 keyboardType: TextInputType.phone,
@@ -147,9 +212,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ? const BrutalSkeleton(width: double.infinity, height: 56)
                 : BrutalistButton(
                     text: 'SIMPAN PERUBAHAN',
-                    onPressed: () {
-                      // Save logic
-                    },
+                    isLoading: _isSubmitting,
+                    onPressed: _isSubmitting ? () {} : _saveProfile,
                     backgroundColor: AppColors.neonGreen,
                   ),
           ],
