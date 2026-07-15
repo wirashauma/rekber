@@ -4,6 +4,9 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/widgets/brutal_skeleton.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../domain/entities/transaction_entity.dart';
+import '../../data/models/transaction_model.dart';
+import '../../../../core/services/mock_data_service.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -14,57 +17,37 @@ class RiwayatScreen extends StatefulWidget {
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
   bool isLoading = true;
+  List<TransactionEntity> riwayat = [];
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
+    _loadData();
+  }
+
+  void _loadData() {
+    Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
-        setState(() => isLoading = false);
+        setState(() {
+          // Mapping dummy data to entities to demonstrate dynamic properties
+          riwayat = MockDataService.dummyTransactions
+              .map((e) => TransactionModel.fromJson(e))
+              .toList();
+          isLoading = false;
+        });
       }
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final List<Map<String, dynamic>> riwayat = [
-      {
-        'title': 'Beli Akun Mobile Legends',
-        'price': 250000,
-        'status': 'SELESAI',
-        'date': '12 Apr 2024',
-        'color': AppColors.neonGreen,
-      },
-      {
-        'title': 'Top Up Diamond Free Fire',
-        'price': 50000,
-        'status': 'DIBATALKAN',
-        'date': '10 Apr 2024',
-        'color': AppColors.hotPink,
-      },
-      {
-        'title': 'Jasa GB Rank Valorant',
-        'price': 150000,
-        'status': 'SELESAI',
-        'date': '08 Apr 2024',
-        'color': AppColors.neonGreen,
-      },
-      {
-        'title': 'Beli Script Website Portfolio',
-        'price': 450000,
-        'status': 'SELESAI',
-        'date': '05 Apr 2024',
-        'color': AppColors.neonGreen,
-      },
-    ];
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         title: Text(
-          'RIWAYAT SELESAI',
+          'RIWAYAT TRANSAKSI',
           style: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.w900,
             color: Colors.black,
@@ -92,6 +75,8 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           }
 
           final item = riwayat[index];
+          final isCompleted = item.status == 'completed';
+          
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
             child: BrutalistCard(
@@ -103,11 +88,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: item['color'],
+                      color: isCompleted ? AppColors.success : AppColors.error,
                       border: Border.all(color: Colors.black, width: 2.0),
                     ),
                     child: Icon(
-                      item['status'] == 'SELESAI' 
+                      isCompleted 
                         ? Icons.check_circle_outline_rounded 
                         : Icons.cancel_outlined,
                       color: Colors.black,
@@ -119,7 +104,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          item['title'],
+                          item.description ?? 'Tanpa Deskripsi',
                           style: GoogleFonts.spaceGrotesk(
                             fontWeight: FontWeight.w900,
                             fontSize: 14,
@@ -128,7 +113,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          item['date'],
+                          '${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}',
                           style: GoogleFonts.spaceGrotesk(
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -143,7 +128,7 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        CurrencyFormatter.format(item['price']),
+                        CurrencyFormatter.format(item.amount),
                         style: GoogleFonts.spaceGrotesk(
                           fontWeight: FontWeight.w900,
                           fontSize: 14,
@@ -153,11 +138,11 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: item['color'],
+                          color: isCompleted ? AppColors.success : AppColors.error,
                           border: Border.all(color: Colors.black, width: 1.5),
                         ),
                         child: Text(
-                          item['status'],
+                          item.status.toUpperCase(),
                           style: GoogleFonts.spaceGrotesk(
                             fontWeight: FontWeight.w900,
                             fontSize: 8,
@@ -175,3 +160,4 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 }
+

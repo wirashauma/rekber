@@ -400,13 +400,14 @@ class _AnimatedBrutalButtonState extends State<AnimatedBrutalButton> with Single
 }
 
 /// Brutalist Text Field — High contrast input with thick borders
-class BrutalistTextField extends StatelessWidget {
+class BrutalistTextField extends StatefulWidget {
   final String hintText;
   final IconData prefixIcon;
   final bool obscureText;
   final TextEditingController? controller;
   final TextInputType keyboardType;
   final String? Function(String?)? validator;
+  final Widget? suffixIcon;
 
   const BrutalistTextField({
     super.key,
@@ -416,55 +417,87 @@ class BrutalistTextField extends StatelessWidget {
     this.controller,
     this.keyboardType = TextInputType.text,
     this.validator,
+    this.suffixIcon,
   });
 
   @override
+  State<BrutalistTextField> createState() => _BrutalistTextFieldState();
+}
+
+class _BrutalistTextFieldState extends State<BrutalistTextField> {
+  @override
+  void initState() {
+    super.initState();
+    // Re-validate when controller changes if there's an error
+    widget.controller?.addListener(_onControllerChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.controller?.removeListener(_onControllerChanged);
+    super.dispose();
+  }
+
+  void _onControllerChanged() {
+    // This ensures that when the controller is updated programmatically (Quick Login),
+    // the FormField state is updated.
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.white,
-            borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: AppColors.black, width: 2.5),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.black,
-                offset: Offset(4, 4),
-                blurRadius: 0,
+    return FormField<String>(
+      validator: widget.validator,
+      initialValue: widget.controller?.text,
+      builder: (FormFieldState<String> state) {
+        // Sync the internal FormField state with the controller
+        if (widget.controller != null && widget.controller!.text != state.value) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) state.didChange(widget.controller!.text);
+          });
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.white,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: AppColors.black, width: 2.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppColors.black,
+                    offset: Offset(4, 4),
+                    blurRadius: 0,
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: TextFormField(
-            controller: controller,
-            obscureText: obscureText,
-            keyboardType: keyboardType,
-            validator: validator,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: AppColors.black,
-            ),
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: TextStyle(
-                color: AppColors.black.withValues(alpha: 0.5),
-                fontWeight: FontWeight.bold,
+              child: TextField(
+                controller: widget.controller,
+                obscureText: widget.obscureText,
+                keyboardType: widget.keyboardType,
+                onChanged: (value) {
+                  state.didChange(value);
+                },
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.black,
+                ),
+                decoration: InputDecoration(
+                  hintText: widget.hintText,
+                  hintStyle: TextStyle(
+                    color: AppColors.black.withValues(alpha: 0.5),
+                    fontWeight: FontWeight.bold,
+                  ),
+                  prefixIcon: Icon(widget.prefixIcon, color: AppColors.black),
+                  suffixIcon: widget.suffixIcon,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
               ),
-              prefixIcon: Icon(prefixIcon, color: AppColors.black),
-              border: InputBorder.none,
-              errorStyle: const TextStyle(height: 0, fontSize: 0), // Hide default error text
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
-          ),
-        ),
-        // Custom Error Message below the brutalist box
-        FormField<String>(
-          validator: validator,
-          initialValue: controller?.text,
-          builder: (state) {
-            if (state.hasError) {
-              return Padding(
+            if (state.hasError)
+              Padding(
                 padding: const EdgeInsets.only(top: 8.0, left: 4.0),
                 child: Text(
                   state.errorText ?? '',
@@ -474,13 +507,12 @@ class BrutalistTextField extends StatelessWidget {
                     fontSize: 12,
                   ),
                 ),
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
-      ],
+              ),
+          ],
+        );
+      },
     );
   }
 }
+
 

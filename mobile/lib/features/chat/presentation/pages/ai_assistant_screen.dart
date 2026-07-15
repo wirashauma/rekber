@@ -210,7 +210,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                     style: GoogleFonts.spaceGrotesk(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.black.withOpacity(0.5),
+                      color: AppColors.black.withValues(alpha: 0.5),
                     ),
                   ),
                 ],

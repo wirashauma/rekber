@@ -82,15 +82,16 @@ class _AutoScrollBannerState extends State<AutoScrollBanner> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 110, // Increased to accommodate overlapping icon
+      height: 130, // Reduced height as content moves up
       child: PageView.builder(
         controller: _pageController,
+        clipBehavior: Clip.none,
         onPageChanged: (index) => _currentPage = index,
         // No itemCount for true infinite loop with builder
         itemBuilder: (context, index) {
           final banner = _banners[index % _banners.length];
           return Padding(
-            padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 15.0),
+            padding: const EdgeInsets.only(left: 24.0, right: 24.0, top: 40.0),
             child: Stack(
               clipBehavior: Clip.none,
               children: [
@@ -125,29 +126,19 @@ class _AutoScrollBannerState extends State<AutoScrollBanner> {
                     ),
                   ),
                 ),
-                
-                // Overlapping Icon Box
+
+                // Monster Peeking in the center (Front Layer)
                 Positioned(
-                  top: -12,
-                  left: 20,
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: banner['iconBg'],
-                      border: Border.all(color: AppColors.black, width: 2.0),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.black,
-                          offset: Offset(3, 3),
-                          blurRadius: 0,
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      banner['icon'],
-                      color: banner['iconColor'],
-                      size: 22,
+                  top: -52,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Image.asset(
+                      index % 2 == 0
+                          ? 'assets/images/monster1.png'
+                          : 'assets/images/monster2.png',
+                      height: 80,
+                      fit: BoxFit.contain,
                     ),
                   ),
                 ),
@@ -159,5 +150,3 @@ class _AutoScrollBannerState extends State<AutoScrollBanner> {
     );
   }
 }
-
-

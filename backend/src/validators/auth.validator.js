@@ -51,4 +51,18 @@ const loginRules = [
     .withMessage('Password wajib diisi.'), // Password is required.
 ];
 
-module.exports = { registerRules, loginRules };
+/**
+ * Validation rules for POST /api/auth/forgot-email
+ */
+const forgotEmailRules = [
+  body('name')
+    .trim()
+    .notEmpty()
+    .withMessage('Nama lengkap wajib diisi.'),
+
+  body('password')
+    .notEmpty()
+    .withMessage('Password wajib diisi.'),
+];
+
+module.exports = { registerRules, loginRules, forgotEmailRules };

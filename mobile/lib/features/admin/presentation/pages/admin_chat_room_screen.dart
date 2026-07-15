@@ -126,7 +126,7 @@ class _AdminChatRoomScreenState extends State<AdminChatRoomScreen> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.yellowAccent.withOpacity(0.3),
+                        color: Colors.yellowAccent.withValues(alpha: 0.3),
                         border: Border.all(color: AppColors.black, width: 2),
                       ),
                       child: TextField(

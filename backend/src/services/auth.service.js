@@ -111,4 +111,34 @@ const login = async ({ email, password }) => {
   };
 };
 
-module.exports = { register, login, updateFcm };
+/**
+ * Find user email by name and password.
+ * @param {Object} data - { name, password }
+ * @returns {Promise<string>} The user's email
+ */
+const forgotEmail = async ({ name, password }) => {
+  const users = await prisma.user.findMany({
+    where: {
+      name: {
+        equals: name,
+        mode: 'insensitive',
+      },
+    },
+  });
+
+  if (users.length === 0) {
+    throw new ApiError(404, 'User dengan nama tersebut tidak ditemukan.');
+  }
+
+  // Check passwords for matching names
+  for (const user of users) {
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (isPasswordValid) {
+      return user.email;
+    }
+  }
+
+  throw new ApiError(401, 'Password salah.');
+};
+
+module.exports = { register, login, updateFcm, forgotEmail };

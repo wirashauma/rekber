@@ -6,10 +6,10 @@ class MockDataService {
 
   static final UserEntity dummyUser = UserEntity(
     id: 'user-123',
-    email: 'test@rekber.com',
-    fullName: 'Rizky Streamer',
+    email: 'user@rekber.com',
+    fullName: 'User Rekber',
     phone: '08123456789',
-    avatarUrl: 'https://i.pravatar.cc/150?u=rizky',
+    avatarUrl: 'https://i.pravatar.cc/150?u=user',
     role: 'user',
     kycStatus: 'verified',
     isActive: true,

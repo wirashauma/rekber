@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/widgets/brutal_skeleton.dart';
+import '../../../../core/widgets/rekber_balance_card.dart';
 import '../../../../core/services/mock_data_service.dart';
 import '../../../../core/utils/currency_formatter.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../auth/data/models/user_model.dart';
+import '../../../transaction/data/models/transaction_model.dart';
 
 import '../widgets/auto_scroll_banner.dart';
 
@@ -23,7 +29,8 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
+    // Simulate initial loading or wait for Bloc
+    Future.delayed(const Duration(seconds: 1), () {
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -32,152 +39,65 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // ── Custom Header ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final user = state is AuthAuthenticated ? state.user : null;
+        final balance = user is UserModel ? user.balance : 0.0;
+        
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: SafeArea(
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // ── Custom Header ──
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Halo Gan! 👋', style: AppTextStyles.h2),
-                        Text(MockDataService.dummyUser.fullName, style: AppTextStyles.bodyMedium),
-                      ],
-                    ),
-                    BrutalistBounce(
-                      onTap: () => context.push('/notifications'),
-                      child: const BrutalistCard(
-                        borderRadius: 12,
-                        padding: EdgeInsets.all(8),
-                        shadowOffset: Offset(4, 4),
-                        borderWidth: 3,
-                        child: Icon(Icons.notifications_active_outlined, size: 24),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // ── Massive Balance Card ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: isLoading
-                    ? const BrutalSkeleton(
-                        width: double.infinity,
-                        height: 200,
-                        borderRadius: 12.0,
-                      )
-                    : BrutalistCard(
-                        backgroundColor: AppColors.tealGreen,
-                        padding: const EdgeInsets.all(24),
-                        shadowOffset: const Offset(4, 4),
-                        child: Column(
+                        Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'SALDO REKBER',
-                              style: TextStyle(
-                                color: AppColors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 14,
-                                letterSpacing: 2.0,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
+                            const Text('Halo Gan! 👋', style: AppTextStyles.h2),
                             Text(
-                              CurrencyFormatter.format(MockDataService.dummyEscrowBalance.toInt()),
-                              style: AppTextStyles.currency.copyWith(
-                                color: AppColors.white,
-                                fontSize: 32,
-                              ),
-                            ),
-                            const SizedBox(height: 32),
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppColors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.black, width: 3),
-                              ),
-                              child: Row(
-                                children: [
-                                  // --- Saldo Aktif ---
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Saldo Aktif',
-                                          style: TextStyle(
-                                            color: AppColors.black,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          CurrencyFormatter.format(MockDataService.dummyAvailableBalance.toInt()),
-                                          style: const TextStyle(
-                                            color: AppColors.black,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  // --- Divider Vertical ---
-                                  Container(
-                                    height: 30,
-                                    width: 3,
-                                    color: AppColors.black,
-                                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                                  ),
-                                  // --- Saldo Tertahan ---
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Masa Garansi',
-                                          style: TextStyle(
-                                            color: AppColors.black,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          CurrencyFormatter.format(
-                                            (MockDataService.dummyEscrowBalance - MockDataService.dummyAvailableBalance).toInt(),
-                                          ),
-                                          style: const TextStyle(
-                                            color: AppColors.black,
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              user?.fullName ?? 'Guest',
+                              style: AppTextStyles.bodyMedium,
                             ),
                           ],
                         ),
-                      ),
-              ),
-            ),
+                        BrutalistBounce(
+                          onTap: () => context.push('/notifications'),
+                          child: Image.asset(
+                            'assets/images/notify.png',
+                            width: 44,
+                            height: 44,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ── Massive Balance Card ──
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: isLoading
+                        ? const BrutalSkeleton(
+                            width: double.infinity,
+                            height: 200,
+                            borderRadius: 12.0,
+                          )
+                        : RekberBalanceCard(
+                            principalBalance: balance,
+                            activeBalance: balance,
+                            guaranteeBalance: 0.0,
+                          ),
+                  ),
+                ),
 
             const SliverToBoxAdapter(child: SizedBox(height: 32)),
 
@@ -249,7 +169,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            const SliverToBoxAdapter(child: SizedBox(height: 24)),
+            const SliverToBoxAdapter(child: SizedBox(height: 40)),
 
             // ── Auto Scrolling Banners ──
             const SliverToBoxAdapter(
@@ -273,7 +193,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
 
-            // ── Transactions List ──
             SliverPadding(
               padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
               sliver: SliverList(
@@ -283,7 +202,10 @@ class _HomePageState extends State<HomePage> {
                       return const BrutalSkeletonCard();
                     }
 
-                    final trx = MockDataService.dummyTransactions[index];
+                    // Mapping dummy to entity to demonstrate dynamic properties
+                    final trxData = MockDataService.dummyTransactions[index];
+                    final trx = TransactionModel.fromJson(trxData);
+                    
                     final lightColors = [AppColors.white, AppColors.paleYellow, AppColors.lightBlue];
                     final bgColor = lightColors[index % lightColors.length];
 
@@ -299,7 +221,7 @@ class _HomePageState extends State<HomePage> {
                               width: 56,
                               height: 56,
                               decoration: BoxDecoration(
-                                color: AppColors.getStatusColor(trx['status']),
+                                color: AppColors.getStatusColor(trx.status),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(color: AppColors.black, width: 3),
                               ),
@@ -311,19 +233,19 @@ class _HomePageState extends State<HomePage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    trx['description'],
+                                    trx.description ?? 'No Description',
                                     style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w900),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    'Tujuan: @${trx['counterparty'] ?? 'Tujuan belum diatur'} • ${trx['date']}',
+                                    'Tujuan: @${trx.sellerName ?? 'Unknown'} • ${_formatDate(trx.createdAt)}',
                                     style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  if (trx['status'] == 'escrow') ...[
+                                  if (trx.status == 'escrow' || trx.status == 'paid') ...[
                                     const SizedBox(height: 8),
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -332,7 +254,7 @@ class _HomePageState extends State<HomePage> {
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: const Text(
-                                        '⏳ Garansi: 47 Jam',
+                                        '⏳ Garansi Aktif',
                                         style: TextStyle(
                                           color: AppColors.white,
                                           fontSize: 10,
@@ -351,7 +273,7 @@ class _HomePageState extends State<HomePage> {
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    CurrencyFormatter.format(trx['amount'].toInt()),
+                                    CurrencyFormatter.format(trx.amount),
                                     style: AppTextStyles.bodyMedium.copyWith(
                                       fontWeight: FontWeight.w900,
                                       color: AppColors.black,
@@ -360,7 +282,7 @@ class _HomePageState extends State<HomePage> {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   const SizedBox(height: 4),
-                                  _buildStatusIndicator(trx['status']),
+                                  _buildStatusIndicator(trx.status),
                                 ],
                               ),
                             ),
@@ -379,7 +301,13 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
-  }
+  },
+);
+}
+
+String _formatDate(DateTime date) {
+  return '${date.day}/${date.month}/${date.year}';
+}
 
   Widget _buildStatusIndicator(String status) {
     String text;

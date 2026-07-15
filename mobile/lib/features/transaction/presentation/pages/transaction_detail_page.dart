@@ -7,21 +7,26 @@ import '../../../../core/widgets/rekber_button.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../transaction/domain/services/escrow_state_machine.dart';
 
+import '../../domain/entities/transaction_entity.dart';
+
 /// Transaction Detail Page — Full escrow tracking with state stepper
 class TransactionDetailPage extends StatelessWidget {
-  // In production, this would receive a TransactionEntity
-  const TransactionDetailPage({super.key});
+  final TransactionEntity transaction;
+  
+  const TransactionDetailPage({
+    super.key,
+    required this.transaction,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Mock transaction data for UI development
-    const status = 'shipped';
-    const txCode = 'RKB-20260508-001234';
-    const amount = 2500000;
-    const fee = 62500;
-    const description = 'iPhone 15 Case Premium - Leather Black';
-    const sellerName = 'Toko Elektronik Jakarta';
-    const buyerName = 'John Doe';
+    final status = transaction.status;
+    final txCode = transaction.txCode;
+    final amount = transaction.amount;
+    final fee = transaction.platformFee;
+    final description = transaction.description ?? 'No Description';
+    final sellerName = transaction.sellerName ?? 'Unknown Seller';
+    final buyerName = transaction.buyerName ?? 'Unknown Buyer';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -50,7 +55,7 @@ class TransactionDetailPage extends StatelessWidget {
             _buildProgressStepper(status),
 
             // ── Transaction Info ──
-            _buildInfoSection(txCode, description, sellerName, buyerName),
+            _buildInfoSection(txCode, description, sellerName, buyerName, transaction.createdAt),
 
             // ── Payment Summary ──
             _buildPaymentSummary(amount, fee),
@@ -220,6 +225,7 @@ class TransactionDetailPage extends StatelessWidget {
     String description,
     String sellerName,
     String buyerName,
+    DateTime createdAt,
   ) {
     return Container(
       margin: const EdgeInsets.all(AppDimensions.xl),
@@ -238,7 +244,7 @@ class TransactionDetailPage extends StatelessWidget {
           _infoRow('Deskripsi', description),
           _infoRow('Penjual', sellerName),
           _infoRow('Pembeli', buyerName),
-          _infoRow('Tanggal', '8 Mei 2026, 10:30'),
+          _infoRow('Tanggal', '${createdAt.day}/${createdAt.month}/${createdAt.year}, ${createdAt.hour}:${createdAt.minute.toString().padLeft(2, '0')}'),
         ],
       ),
     );

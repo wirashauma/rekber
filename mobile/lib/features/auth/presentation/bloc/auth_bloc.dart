@@ -32,7 +32,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
 
     final currentUser = _firebaseAuth.currentUser;
-    if (currentUser == null) {
+    final localToken = await _apiService.getToken();
+
+    if (currentUser == null && localToken == null) {
       emit(AuthUnauthenticated());
       return;
     }
@@ -54,28 +56,42 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
 
     try {
-      // 1. Sign in with Firebase
-      final credential = await _firebaseAuth.signInWithEmailAndPassword(
-        email: event.email,
-        password: event.password,
-      );
+      // 1. Sign in with Firebase (Optional for test accounts)
+      String? firebaseUid;
+      try {
+        final credential = await _firebaseAuth.signInWithEmailAndPassword(
+          email: event.email,
+          password: event.password,
+        );
+        firebaseUid = credential.user?.uid;
+      } catch (e) {
+        if (kDebugMode) print('Firebase Auth Error: $e');
+        // If it's a test account from seeds, we continue to backend login
+        if (!event.email.endsWith('@rekber.com')) {
+          rethrow;
+        }
+      }
 
       // 2. Authenticate with Custom Backend to get JWT
       final response = await _apiService.post('/auth/login', {
         'email': event.email,
-        'password': event.password, // Still needed for backend auth/sync if not using Firebase verify
-        'firebaseUid': credential.user!.uid,
+        'password': event.password,
+        'firebaseUid': firebaseUid,
       });
 
       final token = response['data']['token'];
       await _apiService.saveToken(token);
 
-      // 3. Update FCM Token on backend
-      final fcmToken = await NotificationService().getToken();
-      if (fcmToken != null) {
-        await _apiService.post('/auth/update-fcm', {
-          'fcmToken': fcmToken,
-        });
+      // 3. Update FCM Token on backend (Optional/Non-blocking)
+      try {
+        final fcmToken = await NotificationService().getToken();
+        if (fcmToken != null) {
+          await _apiService.post('/auth/update-fcm', {
+            'fcmToken': fcmToken,
+          });
+        }
+      } catch (e) {
+        if (kDebugMode) print('FCM Update failed: $e');
       }
 
       final user = _mapToEntity(response['data']['user']);

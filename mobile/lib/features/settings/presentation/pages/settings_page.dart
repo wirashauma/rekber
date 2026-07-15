@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_text_styles.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
 
 import '../../../../core/widgets/brutal_skeleton.dart';
 
@@ -19,7 +23,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 1500), () {
+    Future.delayed(const Duration(milliseconds: 1000), () {
       if (mounted) {
         setState(() => isLoading = false);
       }
@@ -28,42 +32,46 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('PENGATURAN'),
-        automaticallyImplyLeading: false,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          children: [
-            // Profile Header
-            isLoading
-                ? const BrutalSkeleton(width: double.infinity, height: 110, borderRadius: 0)
-                : const BrutalistCard(
-                    backgroundColor: AppColors.white,
-                    padding: EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 35,
-                          backgroundColor: AppColors.primary,
-                          child: Icon(Icons.person_rounded, size: 40, color: AppColors.black),
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final user = state is AuthAuthenticated ? state.user : null;
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            title: const Text('PENGATURAN'),
+            automaticallyImplyLeading: false,
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              children: [
+                // Profile Header
+                isLoading
+                    ? const BrutalSkeleton(width: double.infinity, height: 110, borderRadius: 0)
+                    : BrutalistCard(
+                        backgroundColor: AppColors.white,
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            const CircleAvatar(
+                              radius: 35,
+                              backgroundColor: AppColors.primary,
+                              child: Icon(Icons.person_rounded, size: 40, color: AppColors.black),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(user?.fullName ?? 'Guest', style: AppTextStyles.h2),
+                                  Text(user?.email ?? 'wira@example.com', style: AppTextStyles.bodySmall),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        SizedBox(width: 20),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Wira Shauma', style: AppTextStyles.h2),
-                              Text('wira@example.com', style: AppTextStyles.bodySmall),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
             const SizedBox(height: 32),
             
             // Settings List
@@ -81,7 +89,7 @@ class _SettingsPageState extends State<SettingsPage> {
               _settingsItem(
                 title: 'KYC Status',
                 icon: Icons.verified_user_outlined,
-                badge: _buildKYCBadge(true),
+                badge: _buildKYCBadge(user?.isKycVerified ?? false),
                 onTap: () => context.push('/kyc'),
               ),
               _settingsItem(
@@ -120,7 +128,9 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
     );
-  }
+  },
+);
+}
 
   Widget _settingsItem({
     required String title,
@@ -193,7 +203,7 @@ class _SettingsPageState extends State<SettingsPage> {
             text: 'YA, KELUAR',
             onPressed: () {
               Navigator.pop(context);
-              // Implementation for actual logout
+              context.read<AuthBloc>().add(AuthLogoutRequested());
             },
             backgroundColor: AppColors.error,
           ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
+import '../../features/auth/presentation/pages/forgot_email_page.dart';
 import '../../features/home/presentation/pages/main_wrapper.dart';
 import '../../features/chat/presentation/pages/ai_assistant_screen.dart';
 
@@ -29,6 +30,9 @@ import '../../features/admin/presentation/pages/admin_user_manage_screen.dart';
 import '../../features/admin/presentation/pages/admin_system_screen.dart';
 import '../../features/admin/presentation/pages/admin_main_wrapper.dart';
 import '../../features/admin/presentation/pages/admin_chat_room_screen.dart';
+import '../../features/transaction/domain/entities/transaction_entity.dart';
+import '../../features/transaction/data/models/transaction_model.dart';
+import '../../core/services/mock_data_service.dart';
 
 /// REKBER App Router — GoRouter configuration
 class AppRouter {
@@ -48,6 +52,11 @@ class AppRouter {
         path: '/register',
         name: 'register',
         builder: (context, state) => const RegisterPage(),
+      ),
+      GoRoute(
+        path: '/forgot-email',
+        name: 'forgot-email',
+        builder: (context, state) => const ForgotEmailPage(),
       ),
 
       // ── Main App Routes ──
@@ -111,7 +120,11 @@ class AppRouter {
       GoRoute(
         path: '/transaction/:id',
         name: 'transaction-detail',
-        builder: (context, state) => const TransactionDetailPage(),
+        builder: (context, state) {
+          final transaction = state.extra as TransactionEntity? ?? 
+            TransactionModel.fromJson(MockDataService.dummyTransactions.first);
+          return TransactionDetailPage(transaction: transaction);
+        },
       ),
 
       // ── Chat Routes ──

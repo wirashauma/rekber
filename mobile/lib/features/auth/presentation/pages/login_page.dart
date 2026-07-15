@@ -19,6 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -121,12 +122,49 @@ class _LoginPageState extends State<LoginPage> {
                         controller: _passwordController,
                         hintText: 'Masukkan Password',
                         prefixIcon: Icons.lock_outline,
-                        obscureText: true,
+                        obscureText: _obscurePassword,
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                            color: AppColors.black,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Password wajib diisi';
                           if (v.length < 6) return 'Minimal 6 karakter';
                           return null;
                         },
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () async {
+                            final result = await context.push('/forgot-email');
+                            if (result != null && result is String) {
+                              _emailController.text = result;
+                            }
+                          },
+                          style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            'Lupa Email?',
+                            style: GoogleFonts.spaceGrotesk(
+                              color: AppColors.black,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              decoration: TextDecoration.underline,
+                            ),
+                          ),
+                        ),
                       ),
                       const SizedBox(height: 32),
                       BlocBuilder<AuthBloc, AuthState>(
@@ -226,17 +264,27 @@ class _LoginPageState extends State<LoginPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _buildQuickLoginButton(
-                      label: 'USER TEST',
+                      label: 'BUYER',
                       color: AppColors.paleYellow,
                       onTap: () {
-                        _emailController.text = 'test@rekber.com';
-                        _passwordController.text = 'password123';
+                        _emailController.text = 'buyer@rekber.com';
+                        _passwordController.text = 'buyer123';
                         _onLogin();
                       },
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     _buildQuickLoginButton(
-                      label: 'ADMIN TEST',
+                      label: 'SELLER',
+                      color: AppColors.neonGreen,
+                      onTap: () {
+                        _emailController.text = 'seller@rekber.com';
+                        _passwordController.text = 'seller123';
+                        _onLogin();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _buildQuickLoginButton(
+                      label: 'ADMIN',
                       color: AppColors.lightBlue,
                       onTap: () {
                         _emailController.text = 'admin@rekber.com';

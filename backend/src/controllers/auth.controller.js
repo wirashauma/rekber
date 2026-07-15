@@ -67,4 +67,18 @@ const updateFcm = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, updateFcm };
+const forgotEmail = async (req, res, next) => {
+  try {
+    const { name, password } = req.body;
+    const email = await authService.forgotEmail({ name, password });
+    res.status(200).json({
+      success: true,
+      message: 'Email berhasil ditemukan.',
+      data: { email },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, updateFcm, forgotEmail };

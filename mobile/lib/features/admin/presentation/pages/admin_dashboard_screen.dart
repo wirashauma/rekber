@@ -178,7 +178,7 @@ class AdminDashboardScreen extends StatelessWidget {
             style: GoogleFonts.spaceGrotesk(
               fontWeight: FontWeight.w700,
               fontSize: 12,
-              color: AppColors.black.withOpacity(0.7),
+              color: AppColors.black.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -231,7 +231,7 @@ class AdminDashboardScreen extends StatelessWidget {
             style: GoogleFonts.spaceGrotesk(
               fontWeight: FontWeight.w700,
               fontSize: 9,
-              color: AppColors.black.withOpacity(0.6),
+              color: AppColors.black.withValues(alpha: 0.6),
             ),
           ),
         ],
