@@ -44,6 +44,64 @@ rekber/
     └── analysis_options.yaml
 ```
 
+## 🛠️ Tech Stack
+
+### Backend
+
+| Category | Technology | Description |
+|----------|-----------|-------------|
+| **Runtime** | Node.js (≥ 18) | JavaScript runtime |
+| **Framework** | Express v5 | HTTP server & REST API |
+| **Language** | JavaScript (CommonJS) | Backend logic |
+| **ORM** | Prisma v7 | Type-safe database access & migrations |
+| **Database** | PostgreSQL | Primary relational database (via Supabase) |
+| **BaaS** | Supabase | Hosted Postgres, Edge Functions, Auth, Realtime |
+| **Edge Functions** | Deno / TypeScript | Serverless functions for escrow logic |
+| **Auth** | JSON Web Token (jsonwebtoken) | API authentication & authorization |
+| **Security** | Helmet | HTTP security headers |
+| **Password Hashing** | bcryptjs | Secure password hashing |
+| **Validation** | express-validator | Request input validation |
+| **HTTP Logging** | Morgan | HTTP request logger middleware |
+| **CORS** | cors | Cross-Origin Resource Sharing |
+| **Env Config** | dotenv | Environment variable management |
+| **DB Driver** | pg | PostgreSQL client for Node.js |
+| **Dev Tools** | Nodemon | Auto-restart server on file changes |
+
+### Mobile
+
+| Category | Technology | Description |
+|----------|-----------|-------------|
+| **Framework** | Flutter (≥ 3.2.0) | Cross-platform UI framework |
+| **Language** | Dart (≥ 3.2.0) | Mobile app language |
+| **State Management** | flutter_bloc / bloc | BLoC pattern with event/state separation |
+| **Dependency Injection** | get_it + injectable | Service locator & code generation DI |
+| **Routing** | go_router | Declarative routing |
+| **Backend Client** | supabase_flutter | Supabase SDK for Flutter |
+| **Firebase** | firebase_core, firebase_auth, firebase_messaging | Auth, push notifications |
+| **Notifications** | flutter_local_notifications | Local push notifications |
+| **Functional Programming** | dartz | Either, Option, functional error handling |
+| **Networking** | http | HTTP client |
+| **UI/Design** | google_fonts, flutter_svg, shimmer, lottie | Typography, SVG, loading skeletons, animations |
+| **Image Handling** | image_picker, image_cropper, cached_network_image | Pick, crop, and cache images |
+| **Charts** | fl_chart | Seller dashboard analytics |
+| **QR Code** | qr_flutter | QRIS payment QR generation |
+| **Storage** | shared_preferences, flutter_secure_storage | Local & secure key-value storage |
+| **Utilities** | intl, uuid, timeago, url_launcher, share_plus | i18n, unique IDs, time formatting, deep links, sharing |
+| **Value Equality** | equatable | Simplified equality comparisons for BLoC states |
+| **Testing** | flutter_test, integration_test, bloc_test, mocktail | Unit, integration, and BLoC testing |
+| **Code Generation** | build_runner, injectable_generator | DI & boilerplate code generation |
+| **Linting** | flutter_lints | Static analysis rules |
+
+### Infrastructure & DevOps
+
+| Category | Technology | Description |
+|----------|-----------|-------------|
+| **Database Hosting** | Supabase (PostgreSQL) | Managed cloud Postgres |
+| **Serverless** | Supabase Edge Functions | Deno-based serverless compute |
+| **Push Notifications** | Firebase Cloud Messaging (FCM) | Cross-platform push notifications |
+| **Authentication** | Firebase Auth + JWT | Multi-provider auth |
+| **Version Control** | Git | Source code management |
+
 ## 🚀 Getting Started
 
 ### Prerequisites
