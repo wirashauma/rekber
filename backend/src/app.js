@@ -5,70 +5,113 @@
 // It sets up all middleware, routes, and error handlers.
 // The server is started in src/server.js (separation of concerns).
 
+require('./utils/money');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const morgan = require('morgan');
 
 const routes = require('./routes');
 const { errorHandler, notFoundHandler } = require('./middlewares/error.middleware');
+const { httpLogger } = require('./config/logger');
+const { globalLimiter } = require('./middlewares/rateLimit.middleware');
 const config = require('./config');
 
-// Initialize Express app
-const app = express();
+const createApp = () => {
+  const app = express();
 
-// =============================================================================
-// GLOBAL MIDDLEWARE (order matters!)
-// =============================================================================
+  // 1. Helmet: Sets various HTTP headers for security
+  app.use(helmet());
 
-// 1. Helmet: Sets various HTTP headers for security
-//    (XSS protection, content-type sniffing prevention, etc.)
-app.use(helmet());
+  // 2. Trust Proxy: Configure if TRUST_PROXY is set via env
+  if (process.env.TRUST_PROXY) {
+    const tp = process.env.TRUST_PROXY.trim().toLowerCase();
+    if (tp === 'true') {
+      app.set('trust proxy', true);
+    } else if (tp === 'false') {
+      app.set('trust proxy', false);
+    } else if (!isNaN(Number(tp))) {
+      app.set('trust proxy', Number(tp));
+    } else {
+      app.set('trust proxy', process.env.TRUST_PROXY);
+    }
+  }
 
-// 2. CORS: Enable Cross-Origin Resource Sharing
-//    Configure this to only allow your Flutter app's origin in production
-app.use(cors({
-  origin: config.isDev ? '*' : process.env.CORS_ORIGIN,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}));
+  // 3. CORS: Enable Cross-Origin Resource Sharing
+  // In production, strictly restrict to comma-separated CORS_ORIGIN list
+  const allowedOrigins = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 
-// 3. Morgan: HTTP request logger
-//    'dev' format for development, 'combined' for production
-app.use(morgan(config.isDev ? 'dev' : 'combined'));
+  app.use(
+    cors({
+      origin: config.isProd
+        ? (origin, callback) => {
+            // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+            if (!origin || allowedOrigins.includes(origin)) {
+              callback(null, true);
+            } else {
+              callback(new Error('Origin tidak diizinkan oleh kebijakan CORS.'));
+            }
+          }
+        : '*',
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
+    })
+  );
 
-// 4. Body Parsers: Parse JSON and URL-encoded request bodies
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+  // 4. Pino HTTP structured logger (replaces morgan; redacts sensitive fields)
+  app.use(httpLogger);
 
-// =============================================================================
-// HEALTH CHECK ENDPOINT
-// =============================================================================
+  // 5. Global Rate Limiter: 300 requests per 15 minutes per IP
+  app.use(globalLimiter);
 
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'Rekber API is running! 🚀',
-    environment: config.nodeEnv,
-    timestamp: new Date().toISOString(),
+  // 6. Payment Webhook Routes: Mounted BEFORE express.json with express.raw
+  const webhookRoutes = require('./routes/webhook.routes');
+  app.use(
+    ['/webhooks/payment', '/api/webhooks/payment'],
+    express.raw({ type: '*/*', limit: '2mb' }),
+    webhookRoutes
+  );
+
+  // 7. Body Parsers: Parse JSON and URL-encoded request bodies with 100kb limit
+  app.use(express.json({ limit: '100kb' }));
+  app.use(express.urlencoded({ extended: true, limit: '100kb' }));
+
+  // =============================================================================
+  // HEALTH CHECK ENDPOINT
+  // =============================================================================
+
+  app.get('/api/health', (req, res) => {
+    res.status(200).json({
+      success: true,
+      message: 'Rekber API is running! 🚀',
+      environment: config.nodeEnv,
+      timestamp: new Date().toISOString(),
+    });
   });
-});
 
-// =============================================================================
-// API ROUTES
-// =============================================================================
+  // =============================================================================
+  // API ROUTES
+  // =============================================================================
 
-// Mount all routes under /api prefix
-app.use('/api', routes);
+  // Mount all routes under /api prefix and root for compatibility
+  app.use(['/api', '/'], routes);
 
-// =============================================================================
-// ERROR HANDLING (must be AFTER routes)
-// =============================================================================
+  // =============================================================================
+  // ERROR HANDLING (must be AFTER routes)
+  // =============================================================================
 
-// Handle 404 - Route not found
-app.use(notFoundHandler);
+  // Handle 404 - Route not found
+  app.use(notFoundHandler);
 
-// Global error handler - catches all errors passed via next(error)
-app.use(errorHandler);
+  // Global error handler - catches all errors passed via next(error)
+  app.use(errorHandler);
+
+  return app;
+};
+
+const app = createApp();
 
 module.exports = app;
+module.exports.createApp = createApp;
