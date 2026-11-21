@@ -1,5 +1,14 @@
 node_modules
+coverage/
+
 # Keep environment variables out of version control
 .env
+.env.*
+!.env.example
+!.env.*.example
 
 /generated/prisma
+
+# Uploaded storage files
+storage_uploads/
+tests/temp_storage/
