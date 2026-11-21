@@ -1,0 +1,31 @@
+# REKBER - Supabase Configuration
+[project]
+id = "rekber-escrow"
+name = "REKBER Escrow Platform"
+
+[api]
+port = 54321
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+
+[db]
+port = 54322
+major_version = 15
+
+[studio]
+port = 54323
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["rekber://auth/callback"]
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+
+[auth.external.google]
+enabled = false
+
+[storage]
+file_size_limit = "10MB"
