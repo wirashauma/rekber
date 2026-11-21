@@ -23,18 +23,6 @@ enum Role {
 }
 
 /// TransactionStatus tracks the lifecycle of an escrow transaction.
-///
-/// State Machine Flow:
-///   PENDING  →  PAID  →  SHIPPED  →  COMPLETED
-///      ↓         ↓         ↓
-///   CANCELLED  DISPUTED  DISPUTED
-///
-/// - PENDING:    Transaction created by buyer, awaiting payment.
-/// - PAID:       Buyer has deposited funds into escrow.
-/// - SHIPPED:    Seller has shipped the item / delivered the service.
-/// - COMPLETED:  Buyer confirmed receipt; funds released to seller.
-/// - CANCELLED:  Transaction cancelled before completion.
-/// - DISPUTED:   A dispute has been raised by either party.
 enum TransactionStatus {
   PENDING
   PAID
@@ -42,6 +30,82 @@ enum TransactionStatus {
   COMPLETED
   CANCELLED
   DISPUTED
+  REFUNDED
+}
+
+/// FeePayer defines who bears the platform fee for a transaction
+enum FeePayer {
+  BUYER
+  SELLER
+  SPLIT
+}
+
+/// LedgerType categorizes balance changes in the double-entry accounting system
+enum LedgerType {
+  TOPUP
+  ESCROW_HOLD
+  ESCROW_RELEASE
+  ESCROW_REFUND
+  PLATFORM_FEE
+  WITHDRAWAL_RESERVE
+  WITHDRAWAL_RELEASE
+  ADJUSTMENT
+}
+
+/// LedgerDirection specifies whether entry is credit (inflow) or debit (outflow)
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+/// PaymentMethod defines the supported top-up channels
+enum PaymentMethod {
+  QRIS
+  VIRTUAL_ACCOUNT
+}
+
+/// PaymentIntentStatus tracks payment gateway intent lifecycle
+enum PaymentIntentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  FAILED
+}
+
+/// WithdrawalStatus tracks the lifecycle of a user withdrawal request
+enum WithdrawalStatus {
+  PENDING_REVIEW
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+  FAILED
+  CANCELLED
+}
+
+/// FilePurpose defines categories of uploaded files for access control
+enum FilePurpose {
+  SHIPMENT_PROOF
+  DISPUTE_EVIDENCE
+  KYC_ID
+  KYC_SELFIE
+  CHAT_IMAGE
+}
+
+/// DisputeReason categorizes why a buyer initiates a dispute
+enum DisputeReason {
+  NOT_RECEIVED
+  NOT_AS_DESCRIBED
+  DEFECTIVE
+  OTHER
+}
+
+/// DisputeStatus tracks dispute resolution progress
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_BUYER
+  RESOLVED_SELLER
 }
 
 // =============================================================================
@@ -49,46 +113,305 @@ enum TransactionStatus {
 // =============================================================================
 
 /// User model represents both buyers and sellers on the platform.
-/// Each user has a virtual balance (wallet) for escrow operations.
+/// Each user has an integer BigInt balance (wallet in Indonesian Rupiah).
 model User {
   id        String   @id @default(uuid())
   name      String
   email     String   @unique
   password  String   // Hashed with bcryptjs, never stored in plaintext
   role      Role     @default(USER)
-  balance   Float    @default(0) // Virtual wallet balance in IDR
-  
+  balance   BigInt   @default(0) // Virtual wallet balance in IDR (rupiah bulat)
+
   firebaseUid String? @unique @map("firebase_uid")
   fcmToken    String? @map("fcm_token")
+  isActive    Boolean @default(true) @map("is_active")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations: A user can be a buyer or seller in many transactions
-  buyerTransactions  Transaction[] @relation("BuyerTransactions")
-  sellerTransactions Transaction[] @relation("SellerTransactions")
+  // Relations
+  buyerTransactions   Transaction[]        @relation("BuyerTransactions")
+  sellerTransactions  Transaction[]        @relation("SellerTransactions")
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  ledgerEntries       LedgerEntry[]
+  paymentIntents      PaymentIntent[]
+  bankAccounts        BankAccount[]
+  withdrawals         WithdrawalRequest[]
+  reviewedWithdrawals WithdrawalRequest[]  @relation("ReviewedWithdrawals")
+  fileAssets          FileAsset[]
+  submittedShipments  ShipmentProof[]
+  openedDisputes      Dispute[]            @relation("OpenedDisputes")
+  resolvedDisputes    Dispute[]            @relation("ResolvedDisputes")
+  disputeEvidences    DisputeEvidence[]
 
   @@map("users") // Map to lowercase table name in PostgreSQL
 }
 
+/// RefreshToken model for rotating JWT refresh token flow and session revocation.
+model RefreshToken {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  tokenHash    String    @unique @map("token_hash")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id")
+  userAgent    String?   @map("user_agent")
+  ip           String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+/// PasswordResetToken model for one-time secure password reset links.
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
 /// Transaction model represents an escrow transaction between a buyer and seller.
-/// Funds are held in escrow until the transaction reaches COMPLETED status.
+/// Funds are held in escrow until the transaction reaches COMPLETED or REFUNDED status.
 model Transaction {
   id              String            @id @default(uuid())
-  amount          Float             // Transaction amount in IDR
+  code            String            @unique // 8-char unambiguous alphanumeric code
+  amount          BigInt            // Transaction amount in IDR (rupiah bulat)
   itemDescription String            @map("item_description")
   status          TransactionStatus @default(PENDING)
+
+  buyerFee   BigInt   @default(0) @map("buyer_fee")
+  sellerFee  BigInt   @default(0) @map("seller_fee")
+  feePayer   FeePayer @default(SPLIT) @map("fee_payer")
+  heldAmount BigInt   @default(0) @map("held_amount")
+
+  paidAt         DateTime? @map("paid_at")
+  shippedAt      DateTime? @map("shipped_at")
+  completedAt    DateTime? @map("completed_at")
+  cancelledAt    DateTime? @map("cancelled_at")
+  cancelReason   String?   @map("cancel_reason")
+  autoReleaseAt  DateTime? @map("auto_release_at")
+  expiresAt      DateTime? @map("expires_at")
+  reminderSentAt DateTime? @map("reminder_sent_at")
 
   // Foreign keys
   buyerId  String @map("buyer_id")
   sellerId String @map("seller_id")
 
   // Relations
-  buyer  User @relation("BuyerTransactions", fields: [buyerId], references: [id])
-  seller User @relation("SellerTransactions", fields: [sellerId], references: [id])
+  buyer         User           @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  seller        User           @relation("SellerTransactions", fields: [sellerId], references: [id])
+  ledgerEntries LedgerEntry[]
+  shipmentProof ShipmentProof?
+  dispute       Dispute?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("transactions") // Map to lowercase table name in PostgreSQL
 }
+
+/// LedgerEntry represents immutable double-entry bookkeeping records for auditability.
+model LedgerEntry {
+  id             String          @id @default(uuid())
+  userId         String?         @map("user_id") // null = platform revenue/escrow pool
+  transactionId  String?         @map("transaction_id")
+  type           LedgerType
+  direction      LedgerDirection
+  amount         BigInt          // positive amount (rupiah bulat)
+  balanceAfter   BigInt          @map("balance_after")
+  idempotencyKey String          @unique @map("idempotency_key")
+  referenceType  String?         @map("reference_type")
+  referenceId    String?         @map("reference_id")
+  metadata       Json?
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([transactionId])
+  @@map("ledger_entries")
+}
+
+/// PlatformSetting stores runtime configurable key-value settings.
+model PlatformSetting {
+  key         String   @id
+  value       String
+  updatedById String?  @map("updated_by_id")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
+/// PaymentIntent tracks asynchronous top-up requests initiated via payment gateways.
+model PaymentIntent {
+  id          String              @id @default(uuid())
+  userId      String              @map("user_id")
+  provider    String              // e.g. "XENDIT", "FAKE"
+  referenceId String              @unique @map("reference_id")
+  providerRef String?             @map("provider_ref")
+  amount      BigInt              // Requested top-up amount in IDR (rupiah bulat)
+  method      PaymentMethod
+  status      PaymentIntentStatus @default(PENDING)
+  qrString    String?             @map("qr_string") @db.Text
+  vaNumber    String?             @map("va_number")
+  bankCode    String?             @map("bank_code")
+  expiresAt   DateTime            @map("expires_at")
+  paidAt      DateTime?           @map("paid_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+  @@map("payment_intents")
+}
+
+/// WebhookEvent records raw webhook notifications for auditability and idempotency.
+model WebhookEvent {
+  id          String    @id @default(uuid())
+  provider    String
+  eventId     String    @unique @map("event_id")
+  payload     Json
+  status      String    // e.g. "PROCESSED", "FAILED", "IGNORED"
+  processedAt DateTime? @map("processed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([provider, eventId])
+  @@map("webhook_events")
+}
+
+/// BankAccount stores encrypted bank credentials for withdrawals.
+model BankAccount {
+  id               String              @id @default(uuid())
+  userId           String              @map("user_id")
+  bankCode         String              @map("bank_code")
+  accountNumberEnc String              @map("account_number_enc") @db.Text // AES-256-GCM ciphertext
+  accountLast4     String              @map("account_last4")              // Last 4 digits for display
+  accountName      String              @map("account_name")
+  isDefault        Boolean             @default(false) @map("is_default")
+  deletedAt        DateTime?           @map("deleted_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  withdrawals      WithdrawalRequest[]
+
+  @@index([userId, deletedAt])
+  @@map("bank_accounts")
+}
+
+/// WithdrawalRequest tracks balance withdrawal requests and payout workflow.
+model WithdrawalRequest {
+  id             String           @id @default(uuid())
+  userId         String           @map("user_id")
+  bankAccountId  String           @map("bank_account_id")
+  amount         BigInt           // Requested withdrawal amount (rupiah bulat)
+  fee            BigInt           @default(0) // Platform withdrawal fee
+  status         WithdrawalStatus @default(PENDING_REVIEW)
+  idempotencyKey String?          @unique @map("idempotency_key")
+  providerRef    String?          @map("provider_ref")
+  failureReason  String?          @map("failure_reason")
+  reviewedById   String?          @map("reviewed_by_id")
+  reviewedAt     DateTime?        @map("reviewed_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccount    BankAccount      @relation(fields: [bankAccountId], references: [id])
+  reviewedBy     User?            @relation("ReviewedWithdrawals", fields: [reviewedById], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("withdrawal_requests")
+}
+
+/// FileAsset stores metadata and storage location for uploaded files.
+model FileAsset {
+  id         String      @id @default(uuid())
+  ownerId    String      @map("owner_id")
+  purpose    FilePurpose
+  storageKey String      @unique @map("storage_key")
+  mime       String
+  size       Int
+  sha256     String
+  createdAt  DateTime    @default(now()) @map("created_at")
+  deletedAt  DateTime?   @map("deleted_at")
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, deletedAt])
+  @@index([purpose, deletedAt])
+  @@map("file_assets")
+}
+
+/// ShipmentProof stores courier, tracking, and evidence files for a shipped transaction.
+model ShipmentProof {
+  id             String    @id @default(uuid())
+  transactionId  String    @unique @map("transaction_id")
+  submittedById  String    @map("submitted_by_id")
+  courier        String?
+  trackingNumber String?   @map("tracking_number")
+  note           String?   @db.Text
+  fileIds        String[]  @default([]) @map("file_ids")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  submittedBy User        @relation(fields: [submittedById], references: [id])
+
+  @@map("shipment_proofs")
+}
+
+/// Dispute model tracks transaction conflicts and resolution by platform administrators.
+model Dispute {
+  id             String        @id @default(uuid())
+  transactionId  String        @unique @map("transaction_id")
+  openedById     String        @map("opened_by_id")
+  reason         DisputeReason
+  description    String        @db.Text
+  status         DisputeStatus @default(OPEN)
+  resolutionNote String?       @map("resolution_note") @db.Text
+  resolvedById   String?       @map("resolved_by_id")
+  resolvedAt     DateTime?     @map("resolved_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  transaction    Transaction       @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  openedBy       User              @relation("OpenedDisputes", fields: [openedById], references: [id])
+  resolvedBy     User?             @relation("ResolvedDisputes", fields: [resolvedById], references: [id])
+  evidences      DisputeEvidence[]
+
+  @@index([status, createdAt])
+  @@map("disputes")
+}
+
+/// DisputeEvidence records supporting notes and uploaded files from buyer or seller.
+model DisputeEvidence {
+  id            String   @id @default(uuid())
+  disputeId     String   @map("dispute_id")
+  submittedById String   @map("submitted_by_id")
+  note          String?  @db.Text
+  fileIds       String[] @default([]) @map("file_ids")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  dispute     Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  submittedBy User    @relation(fields: [submittedById], references: [id])
+
+  @@index([disputeId, createdAt])
+  @@map("dispute_evidences")
+}
+
+
+
+
