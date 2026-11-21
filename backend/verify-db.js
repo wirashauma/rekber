@@ -2,7 +2,7 @@ const prisma = require('./src/config/prisma');
 
 async function main() {
   console.log('--- Verifying Database Integrity ---');
-  
+
   try {
     // 1. Fetch the latest 5 transactions
     const latestTransactions = await prisma.transaction.findMany({
@@ -11,7 +11,7 @@ async function main() {
       include: {
         buyer: { select: { email: true, name: true } },
         seller: { select: { email: true, name: true } },
-      }
+      },
     });
 
     if (latestTransactions.length === 0) {
