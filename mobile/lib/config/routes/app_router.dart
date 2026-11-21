@@ -1,11 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
-import '../../features/auth/presentation/pages/forgot_email_page.dart';
+import '../../features/auth/presentation/pages/forgot_password_page.dart';
+import '../../features/auth/presentation/pages/reset_password_page.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_state.dart';
+import '../../injection_container.dart';
 import '../../features/home/presentation/pages/main_wrapper.dart';
 import '../../features/chat/presentation/pages/ai_assistant_screen.dart';
-
 import '../../features/home/presentation/pages/notification_page.dart';
 import '../../features/transaction/presentation/pages/transaction_detail_page.dart';
 import '../../features/chat/presentation/pages/chat_room_page.dart';
@@ -34,236 +38,335 @@ import '../../features/transaction/domain/entities/transaction_entity.dart';
 import '../../features/transaction/data/models/transaction_model.dart';
 import '../../core/services/mock_data_service.dart';
 
-/// REKBER App Router — GoRouter configuration
+/// Helper to adapt Stream to Listenable for GoRouter refreshListenable
+class GoRouterRefreshStream extends ChangeNotifier {
+  late final StreamSubscription<dynamic> _subscription;
+
+  GoRouterRefreshStream(Stream<dynamic> stream) {
+    notifyListeners();
+    _subscription = stream.asBroadcastStream().listen(
+          (dynamic _) => notifyListeners(),
+        );
+  }
+
+  @override
+  void dispose() {
+    _subscription.cancel();
+    super.dispose();
+  }
+}
+
+/// REKBER App Router — GoRouter configuration with pure route guard logic
 class AppRouter {
   AppRouter._();
 
-  static final GoRouter router = GoRouter(
-    initialLocation: '/login',
-    debugLogDiagnostics: true,
-    routes: [
-      // ── Auth Routes ──
-      GoRoute(
-        path: '/login',
-        name: 'login',
-        builder: (context, state) => const LoginPage(),
-      ),
-      GoRoute(
-        path: '/register',
-        name: 'register',
-        builder: (context, state) => const RegisterPage(),
-      ),
-      GoRoute(
-        path: '/forgot-email',
-        name: 'forgot-email',
-        builder: (context, state) => const ForgotEmailPage(),
-      ),
+  static GoRouter? _routerInstance;
 
-      // ── Main App Routes ──
-      GoRoute(
-        path: '/home',
-        name: 'home',
-        builder: (context, state) => const MainWrapper(),
-      ),
-      GoRoute(
-        path: '/notifications',
-        name: 'notifications',
-        builder: (context, state) => const NotificationPage(),
-      ),
+  static GoRouter get router =>
+      _routerInstance ??= createRouter(sl<AuthBloc>());
 
-      // ── Quick Action Routes ──
-      GoRoute(
-        path: '/topup',
-        name: 'topup',
-        builder: (context, state) => const TopUpScreen(),
-      ),
-      GoRoute(
-        path: '/input-kode',
-        name: 'input-kode',
-        builder: (context, state) => const InputKodeScreen(),
-      ),
-      GoRoute(
-        path: '/kalkulator',
-        name: 'kalkulator',
-        builder: (context, state) => const KalkulatorScreen(),
-      ),
-      GoRoute(
-        path: '/tarik-dana',
-        name: 'tarik-dana',
-        builder: (context, state) => const TarikDanaScreen(),
-      ),
-      GoRoute(
-        path: '/riwayat',
-        name: 'riwayat',
-        builder: (context, state) => const RiwayatScreen(),
-      ),
-      GoRoute(
-        path: '/bantuan',
-        name: 'bantuan',
-        builder: (context, state) => const HelpCenterScreen(),
-      ),
-      GoRoute(
-        path: '/buat-room',
-        name: 'buat-room',
-        builder: (context, state) => const BuatRoomScreen(),
-      ),
+  /// Pure redirect function for route protection and testing
+  static String? computeAuthRedirect({
+    required String location,
+    required AuthState authState,
+  }) {
+    final isAuthRoute = location == '/login' ||
+        location == '/register' ||
+        location == '/forgot-password' ||
+        location == '/reset-password';
 
-      GoRoute(
-        path: '/detail-pembayaran',
-        name: 'detail-pembayaran',
-        builder: (context, state) {
-          final data = state.extra as Map<String, dynamic>;
-          return DetailPembayaranScreen(data: data);
-        },
-      ),
-      // ── Transaction Routes ──
-      GoRoute(
-        path: '/transaction/:id',
-        name: 'transaction-detail',
-        builder: (context, state) {
-          final transaction = state.extra as TransactionEntity? ?? 
-            TransactionModel.fromJson(MockDataService.dummyTransactions.first);
-          return TransactionDetailPage(transaction: transaction);
-        },
-      ),
+    // 1. Show loading screen during initial state check
+    if (authState is AuthInitial) {
+      return location == '/loading' ? null : '/loading';
+    }
 
-      // ── Chat Routes ──
-      GoRoute(
-        path: '/chat/:transactionId',
-        name: 'chat-room-detail',
-        builder: (context, state) => const ChatRoomPage(),
-      ),
-      GoRoute(
-        path: '/chat-room',
-        name: 'chat-room',
-        builder: (context, state) => const ChatRoomPage(),
-      ),
-      GoRoute(
-        path: '/ai-assistant',
-        name: 'ai-assistant',
-        builder: (context, state) => const AiAssistantScreen(),
-      ),
+    // 2. Session expired -> redirect to /login
+    if (authState is AuthSessionExpired) {
+      return location == '/login' ? null : '/login';
+    }
 
-      // ── Settings Sub-Screens ──
-      GoRoute(
-        path: '/edit-profile',
-        name: 'edit-profile',
-        builder: (context, state) => const EditProfileScreen(),
-      ),
-      GoRoute(
-        path: '/kyc',
-        name: 'kyc',
-        builder: (context, state) => const KycScreen(),
-      ),
-      GoRoute(
-        path: '/help-center',
-        name: 'help-center',
-        builder: (context, state) => const HelpCenterScreen(),
-      ),
-      GoRoute(
-        path: '/security',
-        name: 'security',
-        builder: (context, state) => const SecurityScreen(),
-      ),
-      GoRoute(
-        path: '/legal',
-        name: 'legal',
-        builder: (context, state) => const LegalScreen(),
-      ),
+    // 3. Unauthenticated / guest -> redirect to /login unless on auth route
+    if (authState is AuthUnauthenticated || authState is AuthError) {
+      if (location == '/loading') return '/login';
+      return isAuthRoute ? null : '/login';
+    }
 
-      // ── Admin Sub-Screens (Top Level) ──
-      GoRoute(
-        path: '/admin/dispute/chat/:txid',
-        name: 'admin-dispute-chat',
-        builder: (context, state) {
-          final txid = state.pathParameters['txid']!;
-          return AdminChatRoomScreen(txid: txid);
-        },
-      ),
+    // 4. Authenticated user
+    if (authState is AuthAuthenticated) {
+      // If user is at /login or other auth/loading screens -> redirect to /home or /admin/dashboard
+      if (location == '/loading' || isAuthRoute) {
+        return authState.user.isAdmin ? '/admin/dashboard' : '/home';
+      }
 
-      // ── Admin Routes ──
-      StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) {
-          return AdminMainWrapper(navigationShell: navigationShell);
-        },
-        branches: [
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/admin/dashboard',
-                name: 'admin-dashboard',
-                builder: (context, state) => const AdminDashboardScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/admin/dispute',
-                name: 'admin-dispute',
-                builder: (context, state) => const AdminDisputeScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/admin/kyc',
-                name: 'admin-kyc',
-                builder: (context, state) => const AdminKycScreen(),
-              ),
-            ],
-          ),
-          StatefulShellBranch(
-            routes: [
-              GoRoute(
-                path: '/admin/settings',
-                name: 'admin-settings',
-                builder: (context, state) => const AdminSettingsScreen(),
-                routes: [
-                  GoRoute(
-                    path: 'financial',
-                    name: 'admin-settings-financial',
-                    builder: (context, state) => const AdminFinancialScreen(),
-                  ),
-                  GoRoute(
-                    path: 'users',
-                    name: 'admin-settings-users',
-                    builder: (context, state) => const AdminUserManageScreen(),
-                  ),
-                  GoRoute(
-                    path: 'system',
-                    name: 'admin-settings-system',
-                    builder: (context, state) => const AdminSystemScreen(),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
-    ],
+      // Admin route guard: /admin/* only accessible to role ADMIN
+      if (location.startsWith('/admin')) {
+        if (!authState.user.isAdmin) {
+          return '/home';
+        }
+      }
 
-    // Error page
-    errorBuilder: (context, state) => Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(
-              'Halaman tidak ditemukan',
-              style: Theme.of(context).textTheme.titleMedium,
+      return null;
+    }
+
+    return null;
+  }
+
+  /// Creates a GoRouter instance wired to the specified AuthBloc
+  static GoRouter createRouter(AuthBloc authBloc) {
+    return GoRouter(
+      initialLocation: '/loading',
+      debugLogDiagnostics: true,
+      refreshListenable: GoRouterRefreshStream(authBloc.stream),
+      redirect: (context, state) {
+        return computeAuthRedirect(
+          location: state.matchedLocation,
+          authState: authBloc.state,
+        );
+      },
+      routes: [
+        // ── Loading Route ──
+        GoRoute(
+          path: '/loading',
+          name: 'loading',
+          builder: (context, state) => const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
             ),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => context.go('/home'),
-              child: const Text('Kembali ke Beranda'),
+          ),
+        ),
+
+        // ── Auth Routes ──
+        GoRoute(
+          path: '/login',
+          name: 'login',
+          builder: (context, state) => const LoginPage(),
+        ),
+        GoRoute(
+          path: '/register',
+          name: 'register',
+          builder: (context, state) => const RegisterPage(),
+        ),
+        GoRoute(
+          path: '/forgot-password',
+          name: 'forgot-password',
+          builder: (context, state) => const ForgotPasswordPage(),
+        ),
+        GoRoute(
+          path: '/reset-password',
+          name: 'reset-password',
+          builder: (context, state) => const ResetPasswordPage(),
+        ),
+
+        // ── Main App Routes ──
+        GoRoute(
+          path: '/home',
+          name: 'home',
+          builder: (context, state) => const MainWrapper(),
+        ),
+        GoRoute(
+          path: '/notifications',
+          name: 'notifications',
+          builder: (context, state) => const NotificationPage(),
+        ),
+
+        // ── Quick Action Routes ──
+        GoRoute(
+          path: '/topup',
+          name: 'topup',
+          builder: (context, state) => const TopUpScreen(),
+        ),
+        GoRoute(
+          path: '/input-kode',
+          name: 'input-kode',
+          builder: (context, state) => const InputKodeScreen(),
+        ),
+        GoRoute(
+          path: '/kalkulator',
+          name: 'kalkulator',
+          builder: (context, state) => const KalkulatorScreen(),
+        ),
+        GoRoute(
+          path: '/tarik-dana',
+          name: 'tarik-dana',
+          builder: (context, state) => const TarikDanaScreen(),
+        ),
+        GoRoute(
+          path: '/riwayat',
+          name: 'riwayat',
+          builder: (context, state) => const RiwayatScreen(),
+        ),
+        GoRoute(
+          path: '/bantuan',
+          name: 'bantuan',
+          builder: (context, state) => const HelpCenterScreen(),
+        ),
+        GoRoute(
+          path: '/buat-room',
+          name: 'buat-room',
+          builder: (context, state) => const BuatRoomScreen(),
+        ),
+
+        GoRoute(
+          path: '/detail-pembayaran',
+          name: 'detail-pembayaran',
+          builder: (context, state) {
+            final data = state.extra as Map<String, dynamic>;
+            return DetailPembayaranScreen(data: data);
+          },
+        ),
+        // ── Transaction Routes ──
+        GoRoute(
+          path: '/transaction/:id',
+          name: 'transaction-detail',
+          builder: (context, state) {
+            final transaction = state.extra as TransactionEntity? ??
+                TransactionModel.fromJson(
+                    MockDataService.dummyTransactions.first);
+            return TransactionDetailPage(transaction: transaction);
+          },
+        ),
+
+        // ── Chat Routes ──
+        GoRoute(
+          path: '/chat/:transactionId',
+          name: 'chat-room-detail',
+          builder: (context, state) => const ChatRoomPage(),
+        ),
+        GoRoute(
+          path: '/chat-room',
+          name: 'chat-room',
+          builder: (context, state) => const ChatRoomPage(),
+        ),
+        GoRoute(
+          path: '/ai-assistant',
+          name: 'ai-assistant',
+          builder: (context, state) => const AiAssistantScreen(),
+        ),
+
+        // ── Settings Sub-Screens ──
+        GoRoute(
+          path: '/edit-profile',
+          name: 'edit-profile',
+          builder: (context, state) => const EditProfileScreen(),
+        ),
+        GoRoute(
+          path: '/kyc',
+          name: 'kyc',
+          builder: (context, state) => const KycScreen(),
+        ),
+        GoRoute(
+          path: '/help-center',
+          name: 'help-center',
+          builder: (context, state) => const HelpCenterScreen(),
+        ),
+        GoRoute(
+          path: '/security',
+          name: 'security',
+          builder: (context, state) => const SecurityScreen(),
+        ),
+        GoRoute(
+          path: '/legal',
+          name: 'legal',
+          builder: (context, state) => const LegalScreen(),
+        ),
+
+        // ── Admin Sub-Screens (Top Level) ──
+        GoRoute(
+          path: '/admin/dispute/chat/:txid',
+          name: 'admin-dispute-chat',
+          builder: (context, state) {
+            final txid = state.pathParameters['txid']!;
+            return AdminChatRoomScreen(txid: txid);
+          },
+        ),
+
+        // ── Admin Routes ──
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            return AdminMainWrapper(navigationShell: navigationShell);
+          },
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/admin/dashboard',
+                  name: 'admin-dashboard',
+                  builder: (context, state) => const AdminDashboardScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/admin/dispute',
+                  name: 'admin-dispute',
+                  builder: (context, state) => const AdminDisputeScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/admin/kyc',
+                  name: 'admin-kyc',
+                  builder: (context, state) => const AdminKycScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/admin/settings',
+                  name: 'admin-settings',
+                  builder: (context, state) => const AdminSettingsScreen(),
+                  routes: [
+                    GoRoute(
+                      path: 'financial',
+                      name: 'admin-settings-financial',
+                      builder: (context, state) =>
+                          const AdminFinancialScreen(),
+                    ),
+                    GoRoute(
+                      path: 'users',
+                      name: 'admin-settings-users',
+                      builder: (context, state) =>
+                          const AdminUserManageScreen(),
+                    ),
+                    GoRoute(
+                      path: 'system',
+                      name: 'admin-settings-system',
+                      builder: (context, state) =>
+                          const AdminSystemScreen(),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ],
         ),
+      ],
+
+      // Error page
+      errorBuilder: (context, state) => Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 64, color: Colors.grey),
+              const SizedBox(height: 16),
+              Text(
+                'Halaman tidak ditemukan',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 8),
+              ElevatedButton(
+                onPressed: () => context.go('/home'),
+                child: const Text('Kembali ke Beranda'),
+              ),
+            ],
+          ),
+        ),
       ),
-    ),
-  );
+    );
+  }
 }

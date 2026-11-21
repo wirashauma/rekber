@@ -27,17 +27,15 @@ const createTransactionRules = [
  * Validation rules for PUT /api/transactions/:id/status
  */
 const updateStatusRules = [
-  param('id')
-    .isUUID()
-    .withMessage('ID transaksi harus berupa UUID yang valid.'), // Transaction ID must be valid UUID.
+  param('id').isUUID().withMessage('ID transaksi harus berupa UUID yang valid.'), // Transaction ID must be valid UUID.
 
   body('status')
     .trim()
     .notEmpty()
     .withMessage('Status baru wajib diisi.') // New status is required.
-    .isIn(['PENDING', 'PAID', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'DISPUTED'])
+    .isIn(['PENDING', 'PAID', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'DISPUTED', 'REFUNDED'])
     .withMessage(
-      'Status tidak valid. Pilihan: PENDING, PAID, SHIPPED, COMPLETED, CANCELLED, DISPUTED.'
+      'Status tidak valid. Pilihan: PENDING, PAID, SHIPPED, COMPLETED, CANCELLED, DISPUTED, REFUNDED.'
     ), // Invalid status.
 ];
 
@@ -45,9 +43,7 @@ const updateStatusRules = [
  * Validation rules for GET /api/transactions/:id
  */
 const getTransactionRules = [
-  param('id')
-    .isUUID()
-    .withMessage('ID transaksi harus berupa UUID yang valid.'), // Transaction ID must be valid UUID.
+  param('id').isUUID().withMessage('ID transaksi harus berupa UUID yang valid.'), // Transaction ID must be valid UUID.
 ];
 
 module.exports = { createTransactionRules, updateStatusRules, getTransactionRules };

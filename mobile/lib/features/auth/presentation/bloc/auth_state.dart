@@ -25,6 +25,8 @@ class AuthAuthenticated extends AuthState {
 
 class AuthUnauthenticated extends AuthState {}
 
+class AuthSessionExpired extends AuthState {}
+
 class AuthError extends AuthState {
   final String message;
   const AuthError({required this.message});

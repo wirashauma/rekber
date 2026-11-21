@@ -79,7 +79,19 @@ class NotificationService {
   }
 
   Future<String?> getToken() async {
-    return await _fcm.getToken(vapidKey: kIsWeb ? _vapidKey : null);
+    try {
+      return await _fcm.getToken(vapidKey: kIsWeb ? _vapidKey : null);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Stream<String> get onTokenRefresh {
+    try {
+      return _fcm.onTokenRefresh;
+    } catch (_) {
+      return const Stream.empty();
+    }
   }
 
   static Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {

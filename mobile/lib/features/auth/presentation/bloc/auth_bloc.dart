@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../data/models/user_model.dart';
@@ -8,22 +8,46 @@ import '../../domain/entities/user_entity.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
-/// Auth BLoC — Manages authentication state using Firebase Auth & Custom Backend
+/// Auth BLoC — Manages authentication state using backend JWT and token refresh
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final FirebaseAuth _firebaseAuth;
   final ApiService _apiService;
+  final NotificationService? _notificationService;
+  StreamSubscription<void>? _sessionExpiredSubscription;
+  StreamSubscription<String>? _fcmTokenSubscription;
 
   AuthBloc({
-    required FirebaseAuth firebaseAuth,
     required ApiService apiService,
-  })  : _firebaseAuth = firebaseAuth,
-        _apiService = apiService,
+    NotificationService? notificationService,
+  })  : _apiService = apiService,
+        _notificationService = notificationService,
         super(AuthInitial()) {
     on<AuthCheckRequested>(_onCheckAuth);
     on<AuthLoginRequested>(_onLogin);
     on<AuthRegisterRequested>(_onRegister);
     on<AuthLogoutRequested>(_onLogout);
     on<AuthRoleSwitched>(_onRoleSwitch);
+    on<AuthSessionExpiredEvent>(_onSessionExpired);
+
+    // Listen for session expiration events emitted by ApiService on 401 refresh failure
+    _sessionExpiredSubscription = _apiService.onSessionExpired.listen((_) {
+      add(AuthSessionExpiredEvent());
+    });
+
+    // Listen for FCM token refreshes and update backend if authenticated
+    final notifService = _notificationService;
+    if (notifService != null) {
+      _fcmTokenSubscription =
+          notifService.onTokenRefresh.listen((newToken) async {
+        if (state is AuthAuthenticated && newToken.isNotEmpty) {
+          try {
+            await _apiService
+                .post('/auth/update-fcm', {'fcmToken': newToken});
+          } catch (e) {
+            if (kDebugMode) print('FCM token refresh sync error: $e');
+          }
+        }
+      });
+    }
   }
 
   Future<void> _onCheckAuth(
@@ -32,20 +56,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
 
-    final currentUser = _firebaseAuth.currentUser;
-    final localToken = await _apiService.getToken();
-
-    if (currentUser == null && localToken == null) {
+    final token = await _apiService.getAccessToken();
+    if (token == null || token.isEmpty) {
       emit(AuthUnauthenticated());
       return;
     }
 
     try {
-      // Sync/Fetch user data from custom backend using UID
       final response = await _apiService.get('/auth/me');
-      final user = _mapToEntity(response['data']);
-      emit(AuthAuthenticated(user: user, activeRole: user.role));
-    } catch (e) {
+      if (response != null && response['data'] != null) {
+        final user = _mapToEntity(response['data']);
+        emit(AuthAuthenticated(user: user, activeRole: user.role));
+      } else {
+        await _apiService.clearTokens();
+        emit(AuthUnauthenticated());
+      }
+    } catch (_) {
+      await _apiService.clearTokens();
       emit(AuthUnauthenticated());
     }
   }
@@ -57,51 +84,42 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
 
     try {
-      // 1. Sign in with Firebase (Optional for test accounts)
-      String? firebaseUid;
-      try {
-        final credential = await _firebaseAuth.signInWithEmailAndPassword(
-          email: event.email,
-          password: event.password,
-        );
-        firebaseUid = credential.user?.uid;
-      } catch (e) {
-        if (kDebugMode) print('Firebase Auth Error: $e');
-        // If it's a test account from seeds, we continue to backend login
-        if (!event.email.endsWith('@rekber.com')) {
-          rethrow;
-        }
-      }
-
-      // 2. Authenticate with Custom Backend to get JWT
       final response = await _apiService.post('/auth/login', {
         'email': event.email,
         'password': event.password,
-        'firebaseUid': firebaseUid,
       });
 
-      final token = response['data']['token'];
-      await _apiService.saveToken(token);
+      final data = response['data'];
+      final accessToken = data['accessToken'] ?? data['token'];
+      final refreshToken = data['refreshToken'];
 
-      // 3. Update FCM Token on backend (Optional/Non-blocking)
-      try {
-        final fcmToken = await NotificationService().getToken();
-        if (fcmToken != null) {
-          await _apiService.post('/auth/update-fcm', {
-            'fcmToken': fcmToken,
-          });
-        }
-      } catch (e) {
-        if (kDebugMode) print('FCM Update failed: $e');
+      if (accessToken != null && refreshToken != null) {
+        await _apiService.saveTokens(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        );
+      } else if (accessToken != null) {
+        await _apiService.saveToken(accessToken);
       }
 
-      final user = _mapToEntity(response['data']['user']);
+      // Update FCM Token on backend (non-blocking)
+      final notif = _notificationService;
+      if (notif != null) {
+        try {
+          final fcmToken = await notif.getToken();
+          if (fcmToken != null && fcmToken.isNotEmpty) {
+            await _apiService.post('/auth/update-fcm', {'fcmToken': fcmToken});
+          }
+        } catch (e) {
+          if (kDebugMode) print('FCM update error: $e');
+        }
+      }
+
+      final user = _mapToEntity(data['user']);
       emit(AuthAuthenticated(user: user, activeRole: user.role));
-    } on FirebaseAuthException catch (e) {
-      emit(AuthError(message: _getAuthErrorMessage(e.code)));
     } on ApiException catch (e) {
       emit(AuthError(message: e.message));
-    } catch (e) {
+    } catch (_) {
       emit(const AuthError(message: 'Terjadi kesalahan. Coba lagi nanti.'));
     }
   }
@@ -113,41 +131,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
 
     try {
-      // 1. Create user in Firebase Auth
-      final credential = await _firebaseAuth.createUserWithEmailAndPassword(
-        email: event.email,
-        password: event.password,
-      );
-
-      final fcmToken = await NotificationService().getToken();
-
-      // 2. Prepare payload for custom Backend API (PostgreSQL)
       final payload = {
-        'firebaseUid': credential.user!.uid,
-        'email': event.email,
         'name': event.fullName,
-        'phone': event.phone,
-        'password': event.password, // Backend might still want this for initial setup or custom auth
-        'fcmToken': fcmToken,
+        'email': event.email,
+        'password': event.password,
       };
 
-      if (kDebugMode) {
-        print('--- REGISTRATION PAYLOAD ---');
-        print(payload);
-        print('----------------------------');
-      }
-
-      // 3. Send to custom backend
       await _apiService.post('/auth/register', payload);
 
       emit(const AuthRegistrationSuccess(
         message: 'Registrasi berhasil! Silakan login.',
       ));
-    } on FirebaseAuthException catch (e) {
-      emit(AuthError(message: _getAuthErrorMessage(e.code)));
     } on ApiException catch (e) {
       emit(AuthError(message: e.message));
-    } catch (e) {
+    } catch (_) {
       emit(const AuthError(message: 'Registrasi gagal. Coba lagi nanti.'));
     }
   }
@@ -156,9 +153,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthLogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
-    await _firebaseAuth.signOut();
-    await _apiService.clearToken();
-    emit(AuthUnauthenticated());
+    try {
+      final refreshToken = await _apiService.getRefreshToken();
+      if (refreshToken != null && refreshToken.isNotEmpty) {
+        await _apiService.post('/auth/logout', {'refreshToken': refreshToken});
+      }
+    } catch (e) {
+      if (kDebugMode) print('Logout error: $e');
+    } finally {
+      await _apiService.clearTokens();
+      emit(AuthUnauthenticated());
+    }
   }
 
   void _onRoleSwitch(
@@ -174,24 +179,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  void _onSessionExpired(
+    AuthSessionExpiredEvent event,
+    Emitter<AuthState> emit,
+  ) {
+    emit(AuthSessionExpired());
+  }
+
   UserEntity _mapToEntity(Map<String, dynamic> data) {
     return UserModel.fromJson(data);
   }
 
-  String _getAuthErrorMessage(String code) {
-    switch (code) {
-      case 'user-not-found':
-        return 'Email tidak terdaftar.';
-      case 'wrong-password':
-        return 'Password salah.';
-      case 'email-already-in-use':
-        return 'Email sudah digunakan.';
-      case 'invalid-email':
-        return 'Format email tidak valid.';
-      case 'weak-password':
-        return 'Password terlalu lemah.';
-      default:
-        return 'Terjadi kesalahan autentikasi.';
-    }
+  @override
+  Future<void> close() {
+    _sessionExpiredSubscription?.cancel();
+    _fcmTokenSubscription?.cancel();
+    return super.close();
   }
 }

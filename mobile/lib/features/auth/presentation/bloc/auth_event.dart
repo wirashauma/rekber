@@ -37,6 +37,8 @@ class AuthRegisterRequested extends AuthEvent {
 
 class AuthLogoutRequested extends AuthEvent {}
 
+class AuthSessionExpiredEvent extends AuthEvent {}
+
 class AuthRoleSwitched extends AuthEvent {
   final String newRole;
   const AuthRoleSwitched({required this.newRole});

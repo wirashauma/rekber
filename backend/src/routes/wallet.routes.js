@@ -1,63 +1,119 @@
+// =============================================================================
+// Wallet Routes
+// =============================================================================
+
 const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middlewares/auth.middleware');
-const prisma = require('../config/prisma');
+const { topUpLimiter } = require('../middlewares/rateLimit.middleware');
+const { validate } = require('../middlewares/validate.middleware');
+const { createTopUpRules, getTopUpRules } = require('../validators/topup.validator');
+const { createWithdrawalRules, withdrawalIdRules } = require('../validators/withdrawal.validator');
+const topupController = require('../controllers/topup.controller');
+const withdrawalController = require('../controllers/withdrawal.controller');
+const walletService = require('../services/wallet.service');
 
-// POST /api/wallet/topup
-router.post('/topup', authenticate, async (req, res, next) => {
+// All wallet routes require authentication
+router.use(authenticate);
+
+/**
+ * POST /api/wallet/topups
+ * Create a new top-up intent (QRIS or Virtual Account)
+ */
+router.post('/topups', topUpLimiter, createTopUpRules, validate, topupController.createTopUp);
+
+/**
+ * GET /api/wallet/topups/:id
+ * Retrieve details of a specific top-up intent
+ */
+router.get('/topups/:id', getTopUpRules, validate, topupController.getTopUpById);
+
+/**
+ * GET /api/wallet/topups
+ * List top-up intents with cursor pagination
+ */
+router.get('/topups', topupController.getTopUps);
+
+/**
+ * GET /api/wallet
+ * Returns available balance and held escrow balance for the user.
+ */
+router.get('/', async (req, res, next) => {
   try {
-    const { amount } = req.body;
-    const nominal = parseFloat(amount);
-    if (isNaN(nominal) || nominal <= 0) {
-      return res.status(400).json({ success: false, message: 'Nominal top up tidak valid.' });
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.id },
-      data: { balance: { increment: nominal } },
-    });
-
+    const summary = await walletService.getWalletSummary(req.user.id);
     res.status(200).json({
       success: true,
-      message: 'Top up berhasil!',
-      data: { balance: updatedUser.balance },
+      message: 'Ringkasan dompet berhasil diambil.',
+      data: summary,
     });
   } catch (error) {
     next(error);
   }
 });
 
-// POST /api/wallet/withdraw
-router.post('/withdraw', authenticate, async (req, res, next) => {
+/**
+ * GET /api/wallet/ledger
+ * Returns cursor-paginated ledger entries for the user.
+ */
+router.get('/ledger', async (req, res, next) => {
   try {
-    const { amount } = req.body;
-    const nominal = parseFloat(amount);
-    if (isNaN(nominal) || nominal <= 0) {
-      return res.status(400).json({ success: false, message: 'Nominal penarikan tidak valid.' });
-    }
-
-    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User tidak ditemukan.' });
-    }
-
-    if (user.balance < nominal) {
-      return res.status(400).json({ success: false, message: 'Saldo tidak mencukupi untuk penarikan.' });
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.id },
-      data: { balance: { decrement: nominal } },
-    });
-
+    const { cursor, limit } = req.query;
+    const history = await walletService.getLedgerHistory(req.user.id, { cursor, limit });
     res.status(200).json({
       success: true,
-      message: 'Penarikan berhasil!',
-      data: { balance: updatedUser.balance },
+      message: 'Riwayat mutasi buku besar berhasil diambil.',
+      data: history,
     });
   } catch (error) {
     next(error);
   }
+});
+
+/**
+ * POST /api/wallet/withdrawals
+ * Request balance withdrawal to saved bank account
+ */
+router.post('/withdrawals', createWithdrawalRules, validate, withdrawalController.createWithdrawal);
+
+/**
+ * GET /api/wallet/withdrawals
+ * List paginated withdrawal history for user
+ */
+router.get('/withdrawals', withdrawalController.getUserWithdrawals);
+
+/**
+ * POST /api/wallet/withdrawals/:id/cancel
+ * Cancel a pending withdrawal and release reserved balance
+ */
+router.post(
+  '/withdrawals/:id/cancel',
+  withdrawalIdRules,
+  validate,
+  withdrawalController.cancelWithdrawal
+);
+
+/**
+ * POST /api/wallet/topup (Legacy Endpoint)
+ * Deprecated: returns 410 Gone.
+ */
+router.post('/topup', (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'Gunakan fitur top-up/penarikan baru.',
+    code: 'GONE',
+  });
+});
+
+/**
+ * POST /api/wallet/withdraw (Legacy Endpoint)
+ * Deprecated: returns 410 Gone.
+ */
+router.post('/withdraw', (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'Gunakan fitur top-up/penarikan baru.',
+    code: 'GONE',
+  });
 });
 
 module.exports = router;

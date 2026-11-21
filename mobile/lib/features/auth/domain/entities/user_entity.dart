@@ -28,9 +28,9 @@ class UserEntity extends Equatable {
     required this.createdAt,
   });
 
-  bool get isBuyer => role == 'buyer';
-  bool get isSeller => role == 'seller';
-  bool get isAdmin => role == 'admin';
+  bool get isBuyer => role.toLowerCase() == 'buyer' || role.toLowerCase() == 'user';
+  bool get isSeller => role.toLowerCase() == 'seller';
+  bool get isAdmin => role.toLowerCase() == 'admin';
   bool get isKycVerified => kycStatus == 'verified';
   bool get isKycPending => kycStatus == 'pending';
 

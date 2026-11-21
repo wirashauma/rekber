@@ -1,10 +1,6 @@
-/// REKBER API & Supabase Constants
+/// REKBER API Constants
 class ApiConstants {
   ApiConstants._();
-
-  // ── Supabase (replace with your project values) ──
-  static const String supabaseUrl = 'YOUR_SUPABASE_URL';
-  static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
 
   // ── Edge Function Endpoints ──
   static const String createTransaction = '/functions/v1/create-transaction';

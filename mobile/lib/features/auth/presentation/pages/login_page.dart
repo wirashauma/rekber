@@ -49,6 +49,14 @@ class _LoginPageState extends State<LoginPage> {
               ),
             );
           }
+          if (state is AuthSessionExpired) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Sesi berakhir', style: TextStyle(fontWeight: FontWeight.bold)),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
         },
         child: SafeArea(
           child: SingleChildScrollView(
@@ -144,19 +152,14 @@ class _LoginPageState extends State<LoginPage> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: () async {
-                            final result = await context.push('/forgot-email');
-                            if (result != null && result is String) {
-                              _emailController.text = result;
-                            }
-                          },
+                          onPressed: () => context.push('/forgot-password'),
                           style: TextButton.styleFrom(
                             padding: EdgeInsets.zero,
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                           child: Text(
-                            'Lupa Email?',
+                            'Lupa Password?',
                             style: GoogleFonts.spaceGrotesk(
                               color: AppColors.black,
                               fontWeight: FontWeight.w700,
@@ -258,76 +261,9 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
-                // Quick Login Buttons (Developer Tool)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _buildQuickLoginButton(
-                      label: 'BUYER',
-                      color: AppColors.paleYellow,
-                      onTap: () {
-                        _emailController.text = 'buyer@rekber.com';
-                        _passwordController.text = 'buyer123';
-                        _onLogin();
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _buildQuickLoginButton(
-                      label: 'SELLER',
-                      color: AppColors.neonGreen,
-                      onTap: () {
-                        _emailController.text = 'seller@rekber.com';
-                        _passwordController.text = 'seller123';
-                        _onLogin();
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    _buildQuickLoginButton(
-                      label: 'ADMIN',
-                      color: AppColors.lightBlue,
-                      onTap: () {
-                        _emailController.text = 'admin@rekber.com';
-                        _passwordController.text = 'admin123';
-                        _onLogin();
-                      },
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 20),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickLoginButton({
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return BrutalistBounce(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: color,
-          border: Border.all(color: AppColors.black, width: 1.5),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.black,
-              offset: Offset(2, 2),
-            ),
-          ],
-        ),
-        child: Text(
-          label,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            color: AppColors.black,
           ),
         ),
       ),
