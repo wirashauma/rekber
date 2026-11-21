@@ -105,10 +105,10 @@ const run = async () => {
   // 8. Audit integritas saldo sistem lewat reconcile()
   const auditResult = await reconcile();
   console.log(
-    `[8] Audit reconcile: Total discrepancies = ${auditResult.discrepancies.length}, Users checked = ${auditResult.totalUsersChecked}`
+    `[8] Audit reconcile: isReconciled = ${auditResult.isReconciled}, User discrepancies = ${auditResult.userDiscrepancies.length}, Escrow discrepancies = ${auditResult.escrowDiscrepancies.length}`
   );
 
-  if (auditResult.discrepancies.length > 0) {
+  if (!auditResult.isReconciled || auditResult.userDiscrepancies.length > 0 || auditResult.escrowDiscrepancies.length > 0) {
     throw new Error('Ditemukan selisih pada audit keuangan!');
   }
 
