@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -13,8 +14,40 @@ class NotificationService {
 
   static const String _vapidKey = 'BPxeOxcyPR9_YJJ7Tmi4-Bmjn-IDU2LhF8GQDIgljbO0JPemeEXhFGaiQysQ3aNAiv9hAUZhMIwfcL7BBI21tSE';
 
-  Future<void> initialize() async {
-    // Request permissions for iOS
+  void Function(String route)? onNavigateRequested;
+
+  /// Pure helper to resolve target route from notification data payload
+  static String? resolveRouteFromPayload(Map<String, dynamic>? data) {
+    if (data == null || data.isEmpty) return null;
+
+    final disputeId = data['disputeId']?.toString();
+    if (disputeId != null && disputeId.isNotEmpty) {
+      return '/dispute/$disputeId';
+    }
+
+    final chatId = data['chatId']?.toString();
+    if (chatId != null && chatId.isNotEmpty) {
+      return '/chat/$chatId';
+    }
+
+    final transactionId = data['transactionId']?.toString();
+    if (transactionId != null && transactionId.isNotEmpty) {
+      final type = data['type']?.toString() ?? '';
+      if (type.contains('CHAT')) {
+        return '/chat/$transactionId';
+      }
+      return '/transaction/$transactionId';
+    }
+
+    return null;
+  }
+
+  Future<void> initialize({void Function(String route)? onNavigate}) async {
+    if (onNavigate != null) {
+      onNavigateRequested = onNavigate;
+    }
+
+    // Request permissions for push notifications
     await _fcm.requestPermission(
       alert: true,
       badge: true,
@@ -33,27 +66,47 @@ class NotificationService {
     await _localNotifications.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (details) {
-        // Handle notification tap
+        if (details.payload != null && details.payload!.isNotEmpty) {
+          try {
+            final data = jsonDecode(details.payload!) as Map<String, dynamic>;
+            final route = resolveRouteFromPayload(data);
+            if (route != null && onNavigateRequested != null) {
+              onNavigateRequested!(route);
+            }
+          } catch (_) {}
+        }
       },
     );
 
     // Create Android Notification Channel
-    if (Platform.isAndroid) {
-      const AndroidNotificationChannel channel = AndroidNotificationChannel(
-        'high_importance_channel',
-        'High Importance Notifications',
-        description: 'This channel is used for important notifications.',
-        importance: Importance.max,
-      );
+    if (!kIsWeb) {
+      try {
+        if (Platform.isAndroid) {
+          const AndroidNotificationChannel channel = AndroidNotificationChannel(
+            'high_importance_channel',
+            'High Importance Notifications',
+            description: 'This channel is used for important notifications.',
+            importance: Importance.max,
+          );
 
-      await _localNotifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.createNotificationChannel(channel);
+          await _localNotifications
+              .resolvePlatformSpecificImplementation<
+                  AndroidFlutterLocalNotificationsPlugin>()
+              ?.createNotificationChannel(channel);
+        }
+      } catch (_) {}
     }
 
     // Handle background messages
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // Handle background/terminated message open
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      final route = resolveRouteFromPayload(message.data);
+      if (route != null && onNavigateRequested != null) {
+        onNavigateRequested!(route);
+      }
+    });
 
     // Handle foreground messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -65,6 +118,7 @@ class NotificationService {
           id: notification.hashCode,
           title: notification.title,
           body: notification.body,
+          payload: jsonEncode(message.data),
           notificationDetails: const NotificationDetails(
             android: AndroidNotificationDetails(
               'high_importance_channel',
@@ -95,7 +149,6 @@ class NotificationService {
   }
 
   static Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-    // Handle background message
     if (kDebugMode) {
       print('Handling a background message: ${message.messageId}');
     }
