@@ -12,13 +12,16 @@ import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_event.dart';
 import '../../../auth/presentation/bloc/auth_state.dart';
 import '../../../auth/data/models/user_model.dart';
-import '../../../transaction/data/models/transaction_model.dart';
-import '../../../../injection_container.dart';
-import '../../../../core/services/api_service.dart';
-
+import '../../../transaction/presentation/cubit/transaction_cubit.dart';
+import '../../../transaction/presentation/cubit/transaction_state.dart';
+import '../../../wallet/presentation/cubit/wallet_cubit.dart';
+import '../../../wallet/presentation/cubit/wallet_state.dart';
+import '../../../transaction/domain/services/escrow_state_machine.dart';
+import '../../../notification/presentation/cubit/notification_cubit.dart';
+import '../../../notification/presentation/cubit/notification_state.dart';
 import '../widgets/auto_scroll_banner.dart';
 
-/// Home Dashboard — Neo-Brutalism (Saweria Style)
+/// Home Dashboard — Neo-Brutalism
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -27,368 +30,443 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  bool isLoading = true;
-  List<TransactionModel> _transactions = [];
-
   @override
   void initState() {
     super.initState();
-    _refreshData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadInitialData();
+    });
+  }
+
+  void _loadInitialData() {
+    context.read<AuthBloc>().add(AuthCheckRequested());
+    context.read<WalletCubit>().loadWalletData();
+    context.read<TransactionCubit>().loadTransactions();
+    context.read<NotificationCubit>().loadUnreadCount();
   }
 
   Future<void> _refreshData() async {
-    setState(() => isLoading = true);
     context.read<AuthBloc>().add(AuthCheckRequested());
-    await _fetchTransactions();
-    if (mounted) {
-      setState(() => isLoading = false);
-    }
-  }
-
-  Future<void> _fetchTransactions() async {
-    try {
-      final response = await sl<ApiService>().get('/transactions');
-      if (response != null && response['data'] != null) {
-        final List<dynamic> data = response['data'];
-        setState(() {
-          _transactions = data.map((e) => TransactionModel.fromJson(e)).toList();
-        });
-      }
-    } catch (e) {
-      debugPrint('Error fetching transactions: $e');
-    }
+    context.read<WalletCubit>().loadWalletData();
+    context.read<NotificationCubit>().loadUnreadCount();
+    await context.read<TransactionCubit>().loadTransactions();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        final user = state is AuthAuthenticated ? state.user : null;
-        final balance = user is UserModel ? user.balance : 0.0;
-        
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: RefreshIndicator(
-              onRefresh: _refreshData,
-              color: AppColors.black,
-              backgroundColor: AppColors.white,
-              child: CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                slivers: [
-                // ── Custom Header ──
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Halo Gan! 👋', style: AppTextStyles.h2),
-                            Text(
-                              user?.fullName ?? 'Guest',
-                              style: AppTextStyles.bodyMedium,
-                            ),
-                          ],
-                        ),
-                        BrutalistBounce(
-                          onTap: () => context.push('/notifications'),
-                          child: Image.asset(
-                            'assets/images/notify.png',
-                            width: 44,
-                            height: 44,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // ── Massive Balance Card ──
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                    child: isLoading
-                        ? const BrutalSkeleton(
-                            width: double.infinity,
-                            height: 200,
-                            borderRadius: 12.0,
-                          )
-                        : RekberBalanceCard(
-                            principalBalance: balance,
-                            activeBalance: balance,
-                            guaranteeBalance: 0.0,
-                          ),
-                  ),
-                ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 32)),
-
-            // ── Quick Actions ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  children: [
-                    // Row 1
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AnimatedBrutalButton(
-                            icon: Icons.add_box_rounded,
-                            label: 'Top Up',
-                            onTap: () => context.push('/topup'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AnimatedBrutalButton(
-                            icon: Icons.vpn_key_rounded,
-                            label: 'Input Kode',
-                            onTap: () => context.push('/input-kode'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AnimatedBrutalButton(
-                            icon: Icons.calculate_rounded,
-                            label: 'Kalkulator',
-                            onTap: () => context.push('/kalkulator'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    // Row 2
-                    Row(
-                      children: [
-                        Expanded(
-                          child: AnimatedBrutalButton(
-                            icon: Icons.account_balance_wallet_rounded,
-                            label: 'Tarik Dana',
-                            onTap: () => context.push('/tarik-dana'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AnimatedBrutalButton(
-                            icon: Icons.history_rounded,
-                            label: 'Riwayat',
-                            onTap: () => context.push('/riwayat'),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AnimatedBrutalButton(
-                            icon: Icons.help_outline_rounded,
-                            label: 'Bantuan',
-                            onTap: () => context.push('/bantuan'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
-
-            // ── Auto Scrolling Banners ──
-            const SliverToBoxAdapter(
-              child: AutoScrollBanner(),
-            ),
-
-
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
-
-            // ── Recent Transactions Header ──
-            const SliverToBoxAdapter(
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('TRANSAKSI AKTIF', style: AppTextStyles.h3),
-                    Icon(Icons.arrow_forward_rounded, size: 28),
-                  ],
-                ),
-              ),
-            ),
-
-            SliverPadding(
-              padding: const EdgeInsets.only(left: 24, right: 24, top: 24, bottom: 120),
-              sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (isLoading) {
-                      return const BrutalSkeletonCard();
-                    }
-
-                    if (_transactions.isEmpty) {
-                      return Container(
-                        padding: const EdgeInsets.all(24),
-                        decoration: BoxDecoration(
-                          color: AppColors.white,
-                          border: Border.all(color: AppColors.black, width: 2.5),
-                          boxShadow: const [
-                            BoxShadow(color: AppColors.black, offset: Offset(4, 4)),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Belum ada transaksi aktif.',
-                            style: GoogleFonts.spaceGrotesk(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    final trx = _transactions[index];
-                    
-                    final lightColors = [AppColors.white, AppColors.paleYellow, AppColors.lightBlue];
-                    final bgColor = lightColors[index % lightColors.length];
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 20.0),
-                      child: BrutalistBounce(
-                        onTap: () => context.push('/chat/${trx.id}'),
-                        child: BrutalistCard(
-                          backgroundColor: bgColor,
-                          padding: const EdgeInsets.all(16),
-                          shadowOffset: const Offset(4, 4),
-                          child: Row(
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          color: AppColors.black,
+          backgroundColor: AppColors.white,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            slivers: [
+              // ── Custom Header ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, authState) {
+                      final user = authState is AuthAuthenticated ? authState.user : null;
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: AppColors.getStatusColor(trx.status),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.black, width: 3),
-                                ),
-                                child: const Icon(Icons.receipt_long_rounded, color: AppColors.black, size: 32),
+                              const Text('Halo Gan! 👋', style: AppTextStyles.h2),
+                              Text(
+                                user?.fullName ?? 'Pengguna Rekber',
+                                style: AppTextStyles.bodyMedium,
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                            ],
+                          ),
+                          BlocBuilder<NotificationCubit, NotificationState>(
+                            builder: (context, notifState) {
+                              final unreadCount = notifState is NotificationLoaded
+                                  ? notifState.unreadCount
+                                  : context.read<NotificationCubit>().unreadCount;
+
+                              return BrutalistBounce(
+                                onTap: () => context.push('/notifications'),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
                                   children: [
-                                    Text(
-                                      trx.description ?? 'No Description',
-                                      style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w900),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Tujuan: @${trx.sellerName ?? 'Unknown'} • ${_formatDate(trx.createdAt)}',
-                                      style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    if (trx.status == 'escrow' || trx.status == 'paid') ...[
-                                      const SizedBox(height: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    Image.asset(
+                                      'assets/images/notify.png',
+                                      width: 44,
+                                      height: 44,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 44,
+                                        height: 44,
                                         decoration: BoxDecoration(
-                                          color: AppColors.black,
-                                          borderRadius: BorderRadius.circular(4),
+                                          color: AppColors.mustardYellow,
+                                          border: Border.all(color: AppColors.black, width: 2),
                                         ),
-                                        child: const Text(
-                                          '⏳ Garansi Aktif',
-                                          style: TextStyle(
-                                            color: AppColors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w900,
+                                        child: const Icon(Icons.notifications_rounded, color: AppColors.black),
+                                      ),
+                                    ),
+                                    if (unreadCount > 0)
+                                      Positioned(
+                                        top: -4,
+                                        right: -4,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                          constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.error,
+                                            border: Border.all(color: AppColors.black, width: 2),
+                                            borderRadius: BorderRadius.circular(9),
+                                          ),
+                                          child: Text(
+                                            unreadCount > 99 ? '99+' : '$unreadCount',
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                              color: AppColors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w900,
+                                            ),
                                           ),
                                         ),
                                       ),
-                                    ],
                                   ],
                                 ),
+                              );
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ),
+
+              // ── Massive Balance Card ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: BlocBuilder<WalletCubit, WalletState>(
+                    builder: (context, walletState) {
+                      if (walletState is WalletLoading) {
+                        return const BrutalSkeleton(
+                          width: double.infinity,
+                          height: 200,
+                          borderRadius: 12.0,
+                        );
+                      }
+
+                      int balance = 0;
+                      int held = 0;
+
+                      if (walletState is WalletLoaded) {
+                        balance = walletState.summary.balance;
+                        held = walletState.summary.heldBalance;
+                      } else {
+                        final authState = context.read<AuthBloc>().state;
+                        if (authState is AuthAuthenticated && authState.user is UserModel) {
+                          balance = (authState.user as UserModel).balance.toInt();
+                        }
+                      }
+
+                      return InkWell(
+                        onTap: () => context.push('/riwayat-mutasi'),
+                        child: RekberBalanceCard(
+                          principalBalance: balance.toDouble(),
+                          activeBalance: balance.toDouble(),
+                          guaranteeBalance: held.toDouble(),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 32)),
+
+              // ── Quick Actions ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AnimatedBrutalButton(
+                              icon: Icons.add_box_rounded,
+                              label: 'Top Up',
+                              onTap: () => context.push('/topup'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: AnimatedBrutalButton(
+                              icon: Icons.vpn_key_rounded,
+                              label: 'Input Kode',
+                              onTap: () => context.push('/input-kode'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: AnimatedBrutalButton(
+                              icon: Icons.calculate_rounded,
+                              label: 'Kalkulator',
+                              onTap: () => context.push('/kalkulator'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: AnimatedBrutalButton(
+                              icon: Icons.account_balance_wallet_rounded,
+                              label: 'Tarik Dana',
+                              onTap: () => context.push('/tarik-dana'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: AnimatedBrutalButton(
+                              icon: Icons.history_rounded,
+                              label: 'Riwayat',
+                              onTap: () => context.push('/riwayat'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: AnimatedBrutalButton(
+                              icon: Icons.receipt_long_rounded,
+                              label: 'Mutasi',
+                              onTap: () => context.push('/riwayat-mutasi'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 36)),
+
+              // ── Auto Scrolling Banners ──
+              const SliverToBoxAdapter(
+                child: AutoScrollBanner(),
+              ),
+
+              const SliverToBoxAdapter(child: SizedBox(height: 36)),
+
+              // ── Transactions Header ──
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('TRANSAKSI ANDA', style: AppTextStyles.h3),
+                      GestureDetector(
+                        onTap: () => context.push('/riwayat'),
+                        child: const Row(
+                          children: [
+                            Text(
+                              'Lihat Semua',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.black,
                               ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      CurrencyFormatter.format(trx.amount),
-                                      style: AppTextStyles.bodyMedium.copyWith(
-                                        fontWeight: FontWeight.w900,
-                                        color: AppColors.black,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    _buildStatusIndicator(trx.status),
-                                  ],
-                                ),
+                            ),
+                            SizedBox(width: 4),
+                            Icon(Icons.arrow_forward_rounded, size: 20),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // ── Transaction List with Cubit State ──
+              BlocBuilder<TransactionCubit, TransactionState>(
+                builder: (context, state) {
+                  if (state is TransactionLoading) {
+                    return SliverPadding(
+                      padding: const EdgeInsets.all(24),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => const Padding(
+                            padding: EdgeInsets.only(bottom: 16),
+                            child: BrutalSkeletonCard(),
+                          ),
+                          childCount: 3,
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (state is TransactionError) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: BrutalistCard(
+                          backgroundColor: AppColors.paleYellow,
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 36),
+                              const SizedBox(height: 8),
+                              Text(
+                                state.message,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 12),
+                              BrutalistButton(
+                                text: 'COBA LAGI',
+                                backgroundColor: AppColors.black,
+                                textColor: AppColors.white,
+                                onPressed: () => context.read<TransactionCubit>().loadTransactions(),
                               ),
                             ],
                           ),
                         ),
                       ),
                     );
-                  },
-                  childCount: isLoading ? 3 : (_transactions.isEmpty ? 1 : _transactions.length),
-                ),
-              ),
-            ),
+                  }
 
-            const SliverToBoxAdapter(child: SizedBox(height: 40)),
-          ],
+                  final transactions = (state is TransactionListLoaded)
+                      ? state.transactions
+                      : context.read<TransactionCubit>().currentList;
+
+                  if (transactions.isEmpty) {
+                    return SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Container(
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: AppColors.white,
+                            border: Border.all(color: AppColors.black, width: 2.5),
+                            boxShadow: const [
+                              BoxShadow(color: AppColors.black, offset: Offset(4, 4)),
+                            ],
+                          ),
+                          child: Center(
+                            child: Column(
+                              children: [
+                                const Icon(Icons.inbox_rounded, size: 48, color: AppColors.textSecondary),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Belum ada transaksi.',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+
+                  final displayList = transactions.take(5).toList();
+
+                  return SliverPadding(
+                    padding: const EdgeInsets.only(left: 24, right: 24, top: 16, bottom: 120),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final trx = displayList[index];
+                          final lightColors = [AppColors.white, AppColors.paleYellow, AppColors.lightBlue];
+                          final bgColor = lightColors[index % lightColors.length];
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: BrutalistBounce(
+                              onTap: () => context.push('/transaction/${trx.id}'),
+                              child: BrutalistCard(
+                                backgroundColor: bgColor,
+                                padding: const EdgeInsets.all(16),
+                                shadowOffset: const Offset(4, 4),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.getStatusColor(trx.status),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: AppColors.black, width: 2.5),
+                                      ),
+                                      child: const Icon(Icons.receipt_long_rounded, color: AppColors.black, size: 28),
+                                    ),
+                                    const SizedBox(width: 14),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            trx.description ?? 'Tanpa Deskripsi',
+                                            style: AppTextStyles.bodyLarge.copyWith(fontWeight: FontWeight.w900),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${trx.txCode} • ${_formatDate(trx.createdAt)}',
+                                            style: AppTextStyles.bodySmall.copyWith(fontWeight: FontWeight.bold),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(
+                                          CurrencyFormatter.format(trx.amount),
+                                          style: AppTextStyles.bodyMedium.copyWith(
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.black,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 6),
+                                        BrutalistBadge(
+                                          text: EscrowStateMachine.getStatusLabel(trx.status),
+                                          backgroundColor: AppColors.getStatusColor(trx.status),
+                                          textColor: AppColors.black,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                        childCount: displayList.length,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-    );
-  },
-);
-}
-
-String _formatDate(DateTime date) {
-  return '${date.day}/${date.month}/${date.year}';
-}
-
-  Widget _buildStatusIndicator(String status) {
-    String text;
-    Color bgColor;
-    const Color textColor = AppColors.black;
-
-    switch (status) {
-      case 'awaiting_payment':
-        text = 'BELUM BAYAR';
-        bgColor = const Color(0xFFFFB6C1); // Pink
-        break;
-      case 'escrow':
-        text = 'DANA AMAN';
-        bgColor = AppColors.accent; // Neon Green
-        break;
-      case 'completed':
-        text = 'SELESAI';
-        bgColor = AppColors.white;
-        break;
-      default:
-        text = status.toUpperCase();
-        bgColor = AppColors.white;
-    }
-
-    return BrutalistBadge(
-      text: text,
-      backgroundColor: bgColor,
-      textColor: textColor,
     );
   }
 
-  // Helper was replaced by direct AnimatedBrutalButton usage in the grid
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
 }
-
