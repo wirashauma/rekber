@@ -59,6 +59,48 @@ class _LegalScreenState extends State<LegalScreen> {
                 child: BrutalSkeleton(width: double.infinity, height: 100),
               ))
             else ...[
+              // Draft / Placeholder Legal Disclaimer Banner
+              Container(
+                margin: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  border: Border.all(color: Colors.black, width: 2),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black, offset: Offset(4, 4)),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Color(0xFFB45309), size: 22),
+                        const SizedBox(width: 8),
+                        Text(
+                          'DRAFT / PLACEHOLDER LEGAL',
+                          style: GoogleFonts.spaceGrotesk(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            color: const Color(0xFFB45309),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Syarat & Ketentuan dan Kebijakan Privasi ini merupakan dokumen teknis draf awal untuk tahap pengujian. Dokumen legal final sedang dalam proses peninjauan oleh konsultan hukum sebelum peluncuran publik.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
               // Prominent Security Card (Xendit Clause)
               BrutalistCard(
                 backgroundColor: Colors.white,
