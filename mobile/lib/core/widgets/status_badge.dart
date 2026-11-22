@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_dimensions.dart';
+import '../../features/transaction/domain/services/escrow_state_machine.dart';
 
 /// Transaction status badge with dynamic colors
 class StatusBadge extends StatelessWidget {
@@ -17,7 +18,7 @@ class StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = AppColors.getStatusColor(status);
     final bgColor = AppColors.getStatusBackgroundColor(status);
-    final label = _getStatusLabel(status);
+    final label = EscrowStateMachine.getStatusLabel(status);
     final icon = _getStatusIcon(status);
 
     return Container(
@@ -48,31 +49,26 @@ class StatusBadge extends StatelessWidget {
     );
   }
 
-  String _getStatusLabel(String status) {
-    const labels = {
-      'awaiting_payment': 'Menunggu Bayar',
-      'escrow': 'Dana Ditahan',
-      'processed': 'Diproses',
-      'shipped': 'Dikirim',
-      'completed': 'Selesai',
-      'disputed': 'Sengketa',
-      'refunded': 'Dikembalikan',
-      'cancelled': 'Dibatalkan',
-    };
-    return labels[status] ?? status;
-  }
-
   IconData _getStatusIcon(String status) {
-    const icons = {
-      'awaiting_payment': Icons.schedule_rounded,
-      'escrow': Icons.lock_rounded,
-      'processed': Icons.inventory_2_rounded,
-      'shipped': Icons.local_shipping_rounded,
-      'completed': Icons.check_circle_rounded,
-      'disputed': Icons.warning_rounded,
-      'refunded': Icons.replay_rounded,
-      'cancelled': Icons.cancel_rounded,
-    };
-    return icons[status] ?? Icons.help_outline_rounded;
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+      case 'AWAITING_PAYMENT':
+        return Icons.schedule_rounded;
+      case 'PAID':
+      case 'ESCROW':
+        return Icons.lock_rounded;
+      case 'SHIPPED':
+        return Icons.local_shipping_rounded;
+      case 'COMPLETED':
+        return Icons.check_circle_rounded;
+      case 'CANCELLED':
+        return Icons.cancel_rounded;
+      case 'DISPUTED':
+        return Icons.warning_rounded;
+      case 'REFUNDED':
+        return Icons.replay_rounded;
+      default:
+        return Icons.help_outline_rounded;
+    }
   }
 }
