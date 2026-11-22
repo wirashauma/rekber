@@ -48,12 +48,18 @@ class AppColors {
   static const Color info = Color(0xFF3498DB);
 
   // ── Transaction Status Colors ──
-  static const Color statusAwaitingPayment = Color(0xFFFF9F43);
-  static const Color statusEscrow = Color(0xFF54a0ff);
-  static const Color statusProcessed = Color(0xFF5f27cd);
-  static const Color statusCompleted = Color(0xFF10ac84);
-  static const Color statusDisputed = Color(0xFFee5253);
-  static const Color statusShipped = Color(0xFF00d2d3);
+  static const Color statusPending = Color(0xFFFF9F43);
+  static const Color statusPaid = Color(0xFF54A0FF);
+  static const Color statusShipped = Color(0xFF00D2D3);
+  static const Color statusCompleted = Color(0xFF10AC84);
+  static const Color statusCancelled = Color(0xFF8395A7);
+  static const Color statusDisputed = Color(0xFFEE5253);
+  static const Color statusRefunded = Color(0xFF5F27CD);
+
+  // Legacy aliases
+  static const Color statusAwaitingPayment = statusPending;
+  static const Color statusEscrow = statusPaid;
+  static const Color statusProcessed = Color(0xFF5F27CD);
 
   // ── Gradient Definitions (Compatibility) ──
   static const LinearGradient primaryGradient = LinearGradient(
@@ -63,19 +69,25 @@ class AppColors {
 
   /// Get color for transaction status
   static Color getStatusColor(String status) {
-    switch (status) {
-      case 'awaiting_payment':
-        return statusAwaitingPayment;
-      case 'escrow':
-        return statusEscrow;
-      case 'processed':
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+      case 'AWAITING_PAYMENT':
+        return statusPending;
+      case 'PAID':
+      case 'ESCROW':
+        return statusPaid;
+      case 'PROCESSED':
         return statusProcessed;
-      case 'completed':
-        return statusCompleted;
-      case 'disputed':
-        return statusDisputed;
-      case 'shipped':
+      case 'SHIPPED':
         return statusShipped;
+      case 'COMPLETED':
+        return statusCompleted;
+      case 'CANCELLED':
+        return statusCancelled;
+      case 'DISPUTED':
+        return statusDisputed;
+      case 'REFUNDED':
+        return statusRefunded;
       default:
         return textSecondary;
     }
