@@ -11,13 +11,20 @@ const cors = require('cors');
 const helmet = require('helmet');
 
 const routes = require('./routes');
+const metricsRoutes = require('./routes/metrics.routes');
 const { errorHandler, notFoundHandler } = require('./middlewares/error.middleware');
 const { httpLogger } = require('./config/logger');
 const { globalLimiter } = require('./middlewares/rateLimit.middleware');
+const { maintenanceMiddleware } = require('./middlewares/maintenance.middleware');
+const { initSentry } = require('./config/sentry');
+const prisma = require('./config/prisma');
 const config = require('./config');
 
 const createApp = () => {
   const app = express();
+
+  // Initialize Sentry monitoring if SENTRY_DSN is configured
+  initSentry();
 
   // 1. Helmet: Sets various HTTP headers for security
   app.use(helmet());
@@ -56,17 +63,20 @@ const createApp = () => {
           }
         : '*',
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-      allowedHeaders: ['Content-Type', 'Authorization'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Metrics-Token', 'X-Request-ID'],
     })
   );
 
-  // 4. Pino HTTP structured logger (replaces morgan; redacts sensitive fields)
+  // 4. Pino HTTP structured logger (redacts sensitive fields)
   app.use(httpLogger);
 
   // 5. Global Rate Limiter: 300 requests per 15 minutes per IP
   app.use(globalLimiter);
 
-  // 6. Payment Webhook Routes: Mounted BEFORE express.json with express.raw
+  // 6. Maintenance Mode: Blocks non-exempt requests if enabled
+  app.use(maintenanceMiddleware);
+
+  // 7. Payment Webhook Routes: Mounted BEFORE express.json with express.raw
   const webhookRoutes = require('./routes/webhook.routes');
   app.use(
     ['/webhooks/payment', '/api/webhooks/payment'],
@@ -74,22 +84,48 @@ const createApp = () => {
     webhookRoutes
   );
 
-  // 7. Body Parsers: Parse JSON and URL-encoded request bodies with 100kb limit
+  // 8. Body Parsers: Parse JSON and URL-encoded request bodies with 100kb limit
   app.use(express.json({ limit: '100kb' }));
   app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
   // =============================================================================
-  // HEALTH CHECK ENDPOINT
+  // HEALTH CHECK & OBSERVABILITY ENDPOINTS
   // =============================================================================
 
-  app.get('/api/health', (req, res) => {
+  // Liveness Probe
+  app.get(['/api/health', '/health'], (req, res) => {
     res.status(200).json({
       success: true,
+      status: 'healthy',
       message: 'Rekber API is running! 🚀',
       environment: config.nodeEnv,
       timestamp: new Date().toISOString(),
     });
   });
+
+  // Readiness Probe (checks Database connectivity)
+  app.get(['/api/health/ready', '/health/ready'], async (req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1;`;
+      return res.status(200).json({
+        success: true,
+        status: 'ready',
+        database: 'connected',
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      return res.status(503).json({
+        success: false,
+        status: 'not_ready',
+        database: 'disconnected',
+        error: err.message,
+        timestamp: new Date().toISOString(),
+      });
+    }
+  });
+
+  // Prometheus Metrics endpoint
+  app.use(['/metrics', '/api/metrics'], metricsRoutes);
 
   // =============================================================================
   // API ROUTES
