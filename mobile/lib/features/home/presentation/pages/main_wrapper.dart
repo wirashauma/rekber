@@ -5,7 +5,6 @@ import 'home_page.dart';
 import '../../../transaction/presentation/pages/buat_room_screen.dart';
 import '../../../transaction/presentation/pages/riwayat_screen.dart';
 import '../../../settings/presentation/pages/settings_page.dart';
-import '../../../chat/presentation/pages/ai_assistant_screen.dart';
 
 class MainWrapper extends StatefulWidget {
   const MainWrapper({super.key});
@@ -30,7 +29,6 @@ class _MainWrapperState extends State<MainWrapper> {
       const HomePage(),
       const RiwayatScreen(),
       const BuatRoomScreen(), // FAB page
-      const AiAssistantScreen(),
       const SettingsPage(),
     ];
 
@@ -70,10 +68,9 @@ class _BrutalistBottomNav extends StatelessWidget {
           Row(
             children: [
               _navItem(0, Icons.home_rounded, 'Beranda'),
-              _navItem(1, Icons.chat_bubble_rounded, 'Chat'),
-              const SizedBox(width: 80), // Middle space
-              _navItem(3, Icons.auto_awesome_rounded, 'AI'),
-              _navItem(4, Icons.settings_rounded, 'Pengaturan'),
+              _navItem(1, Icons.receipt_long_rounded, 'Riwayat'),
+              const SizedBox(width: 80), // Middle space for FAB
+              _navItem(3, Icons.settings_rounded, 'Pengaturan'),
             ],
           ),
           // FAB
@@ -91,9 +88,9 @@ class _BrutalistBottomNav extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   child: Center(
                     child: Icon(
-                      Icons.add_rounded, 
-                      size: 40, 
-                      color: currentIndex == 2 ? AppColors.tealGreen : AppColors.black
+                      Icons.add_rounded,
+                      size: 40,
+                      color: currentIndex == 2 ? AppColors.tealGreen : AppColors.black,
                     ),
                   ),
                 ),
@@ -133,5 +130,3 @@ class _BrutalistBottomNav extends StatelessWidget {
     );
   }
 }
-
-
