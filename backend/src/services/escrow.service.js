@@ -9,6 +9,7 @@ const { ApiError } = require('../middlewares/error.middleware');
 const { generateTransactionCode } = require('../utils/code');
 const { parseInteger, calculateFee } = require('../utils/money');
 const { VALID_TRANSITIONS, TRANSITION_ROLES } = require('../constants/transaction');
+const events = require('../notifications/events');
 
 /**
  * Helper to ensure a transaction client is present.
@@ -111,6 +112,8 @@ const createTransaction = async ({
       seller: { select: { id: true, name: true, email: true } },
     },
   });
+
+  await events.onTransactionCreated(transaction, buyerId);
 
   return transaction;
 };
@@ -500,7 +503,7 @@ const executeTransition = async (transactionId, targetStatus, user, reason = nul
   }
 
   // 5. Execute atomic transition
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     switch (targetStatus) {
       case 'PAID':
         return await holdEscrow(tx, transactionId, userId);
@@ -516,6 +519,17 @@ const executeTransition = async (transactionId, targetStatus, user, reason = nul
         throw new ApiError(400, `Transisi status ${targetStatus} belum didukung.`);
     }
   });
+
+  // Post-commit notification events
+  if (targetStatus === 'PAID') {
+    await events.onTransactionPaid(result);
+  } else if (targetStatus === 'COMPLETED') {
+    await events.onTransactionCompleted(result);
+  } else if (targetStatus === 'REFUNDED') {
+    await events.onTransactionRefunded(result);
+  }
+
+  return result;
 };
 
 /**
@@ -585,7 +599,7 @@ const submitShipmentProof = async (
   }
 
   // 5. Execute atomically in a single Prisma transaction
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // a. Create ShipmentProof
     await tx.shipmentProof.create({
       data: {
@@ -620,6 +634,10 @@ const submitShipmentProof = async (
       },
     });
   });
+
+  await events.onTransactionShipped(result, { courier, trackingNumber });
+
+  return result;
 };
 
 /**
