@@ -13,6 +13,7 @@ import '../../features/chat/presentation/pages/ai_assistant_screen.dart';
 import '../../features/home/presentation/pages/notification_page.dart';
 import '../../features/transaction/presentation/pages/transaction_detail_page.dart';
 import '../../features/chat/presentation/pages/chat_room_page.dart';
+import '../../features/dispute/presentation/pages/dispute_detail_page.dart';
 import '../../features/wallet/presentation/pages/top_up_screen.dart';
 import '../../features/wallet/presentation/pages/tarik_dana_screen.dart';
 import '../../features/transaction/presentation/pages/input_kode_screen.dart';
@@ -24,6 +25,7 @@ import '../../features/settings/presentation/pages/help_center_screen.dart';
 import '../../features/settings/presentation/pages/security_screen.dart';
 import '../../features/settings/presentation/pages/legal_screen.dart';
 import '../../features/wallet/presentation/pages/detail_pembayaran_screen.dart';
+import '../../features/wallet/presentation/pages/mutasi_screen.dart';
 import '../../features/transaction/presentation/pages/buat_room_screen.dart';
 import '../../features/admin/presentation/pages/admin_dashboard_screen.dart';
 import '../../features/admin/presentation/pages/admin_dispute_screen.dart';
@@ -34,9 +36,8 @@ import '../../features/admin/presentation/pages/admin_user_manage_screen.dart';
 import '../../features/admin/presentation/pages/admin_system_screen.dart';
 import '../../features/admin/presentation/pages/admin_main_wrapper.dart';
 import '../../features/admin/presentation/pages/admin_chat_room_screen.dart';
+import '../../features/admin/presentation/pages/admin_withdrawal_screen.dart';
 import '../../features/transaction/domain/entities/transaction_entity.dart';
-import '../../features/transaction/data/models/transaction_model.dart';
-import '../../core/services/mock_data_service.dart';
 
 /// Helper to adapt Stream to Listenable for GoRouter refreshListenable
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -196,6 +197,11 @@ class AppRouter {
           builder: (context, state) => const RiwayatScreen(),
         ),
         GoRoute(
+          path: '/riwayat-mutasi',
+          name: 'riwayat-mutasi',
+          builder: (context, state) => const MutasiScreen(),
+        ),
+        GoRoute(
           path: '/bantuan',
           name: 'bantuan',
           builder: (context, state) => const HelpCenterScreen(),
@@ -210,7 +216,7 @@ class AppRouter {
           path: '/detail-pembayaran',
           name: 'detail-pembayaran',
           builder: (context, state) {
-            final data = state.extra as Map<String, dynamic>;
+            final data = state.extra;
             return DetailPembayaranScreen(data: data);
           },
         ),
@@ -219,10 +225,22 @@ class AppRouter {
           path: '/transaction/:id',
           name: 'transaction-detail',
           builder: (context, state) {
-            final transaction = state.extra as TransactionEntity? ??
-                TransactionModel.fromJson(
-                    MockDataService.dummyTransactions.first);
-            return TransactionDetailPage(transaction: transaction);
+            final id = state.pathParameters['id'] ?? '';
+            final extraTx = state.extra as TransactionEntity?;
+            return TransactionDetailPage(
+              transactionId: id,
+              initialTransaction: extraTx,
+            );
+          },
+        ),
+
+        // ── Dispute Routes ──
+        GoRoute(
+          path: '/dispute/:id',
+          name: 'dispute-detail',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            return DisputeDetailPage(disputeId: id);
           },
         ),
 
@@ -230,12 +248,10 @@ class AppRouter {
         GoRoute(
           path: '/chat/:transactionId',
           name: 'chat-room-detail',
-          builder: (context, state) => const ChatRoomPage(),
-        ),
-        GoRoute(
-          path: '/chat-room',
-          name: 'chat-room',
-          builder: (context, state) => const ChatRoomPage(),
+          builder: (context, state) {
+            final txId = state.pathParameters['transactionId'] ?? '';
+            return ChatRoomPage(transactionId: txId);
+          },
         ),
         GoRoute(
           path: '/ai-assistant',
@@ -271,6 +287,11 @@ class AppRouter {
         ),
 
         // ── Admin Sub-Screens (Top Level) ──
+        GoRoute(
+          path: '/admin/withdrawals',
+          name: 'admin-withdrawals',
+          builder: (context, state) => const AdminWithdrawalScreen(),
+        ),
         GoRoute(
           path: '/admin/dispute/chat/:txid',
           name: 'admin-dispute-chat',
