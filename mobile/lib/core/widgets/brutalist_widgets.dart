@@ -139,13 +139,17 @@ class _BrutalistButtonState extends State<BrutalistButton> {
                           Icon(widget.icon, color: widget.textColor),
                           const SizedBox(width: 8),
                         ],
-                        Text(
-                          widget.text,
-                          style: TextStyle(
-                            fontSize: widget.height < 45 ? 12 : 16,
-                            fontWeight: FontWeight.w900,
-                            color: widget.textColor,
-                            letterSpacing: 1.0,
+                        Flexible(
+                          child: Text(
+                            widget.text,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: widget.height < 45 ? 12 : 16,
+                              fontWeight: FontWeight.w900,
+                              color: widget.textColor,
+                              letterSpacing: 1.0,
+                            ),
                           ),
                         ),
                       ],
