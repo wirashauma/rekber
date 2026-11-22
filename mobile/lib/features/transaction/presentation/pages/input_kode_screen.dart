@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
-import '../../../../core/widgets/brutal_skeleton.dart';
+import '../../../../core/utils/currency_formatter.dart';
+import '../cubit/transaction_cubit.dart';
+import '../../domain/entities/transaction_entity.dart';
+import '../../domain/services/escrow_state_machine.dart';
 
 class InputKodeScreen extends StatefulWidget {
   const InputKodeScreen({super.key});
@@ -13,17 +18,43 @@ class InputKodeScreen extends StatefulWidget {
 
 class _InputKodeScreenState extends State<InputKodeScreen> {
   final TextEditingController _kodeController = TextEditingController();
-  bool _hasSearched = false;
-  bool isLoading = true;
+  bool _isSearching = false;
+  TransactionEntity? _foundTransaction;
+  String? _errorMessage;
 
   @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(milliseconds: 1200), () {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+  void dispose() {
+    _kodeController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _searchTransaction() async {
+    final code = _kodeController.text.trim();
+    if (code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Masukkan kode transaksi terlebih dahulu.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+      _errorMessage = null;
+      _foundTransaction = null;
     });
+
+    final tx = await context.read<TransactionCubit>().loadTransactionByCode(code);
+
+    if (mounted) {
+      setState(() {
+        _isSearching = false;
+        if (tx != null) {
+          _foundTransaction = tx;
+        } else {
+          _errorMessage = 'Transaksi dengan kode "$code" tidak ditemukan.';
+        }
+      });
+    }
   }
 
   @override
@@ -46,20 +77,11 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        shape: const Border(
-          bottom: BorderSide(color: Colors.black, width: 2.0),
-        ),
+        shape: const Border(bottom: BorderSide(color: Colors.black, width: 2.0)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
-        child: isLoading 
-          ? Column(
-              children: List.generate(4, (index) => const Padding(
-                padding: EdgeInsets.only(bottom: 24),
-                child: BrutalSkeleton(width: double.infinity, height: 80),
-              )),
-            )
-          : Column(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -70,7 +92,12 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
                 color: Colors.black,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
+            Text(
+              'Minta kode unik transaksi ke lawan transaksi Anda untuk bergabung ke ruang rekber.',
+              style: TextStyle(color: Colors.grey.shade700, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
             BrutalistTextField(
               hintText: 'Contoh: TRX-12345',
               prefixIcon: Icons.qr_code_scanner_rounded,
@@ -78,15 +105,34 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
             ),
             const SizedBox(height: 16),
             BrutalistButton(
-              text: 'CARI TRANSAKSI',
-              onPressed: () {
-                setState(() => _hasSearched = true);
-              },
+              text: _isSearching ? 'MENCARI...' : 'CARI TRANSAKSI',
+              onPressed: _isSearching ? () {} : _searchTransaction,
               backgroundColor: Colors.black,
               textColor: Colors.white,
             ),
             const SizedBox(height: 32),
-            if (_hasSearched) ...[
+
+            // Error jika tidak ditemukan
+            if (_errorMessage != null)
+              BrutalistCard(
+                backgroundColor: AppColors.paleYellow,
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, color: AppColors.error),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Hasil Pencarian
+            if (_foundTransaction != null) ...[
               Text(
                 'Hasil Pencarian',
                 style: GoogleFonts.spaceGrotesk(
@@ -105,26 +151,31 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'Beli Akun Valorant',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 18,
+                        Expanded(
+                          child: Text(
+                            _foundTransaction!.description ?? 'Tanpa Deskripsi',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const BrutalistBadge(
-                          text: 'PENDING',
-                          backgroundColor: Colors.white,
+                        BrutalistBadge(
+                          text: EscrowStateMachine.getStatusLabel(_foundTransaction!.status),
+                          backgroundColor: AppColors.getStatusColor(_foundTransaction!.status),
+                          textColor: Colors.black,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     Text(
-                      'Rp450.000',
+                      CurrencyFormatter.format(_foundTransaction!.amount),
                       style: GoogleFonts.spaceGrotesk(
                         fontWeight: FontWeight.w900,
                         fontSize: 24,
-                        color: AppColors.deepPurple,
+                        color: AppColors.black,
                       ),
                     ),
                     const Divider(color: Colors.black, thickness: 2, height: 24),
@@ -132,49 +183,35 @@ class _InputKodeScreenState extends State<InputKodeScreen> {
                       children: [
                         const CircleAvatar(
                           backgroundColor: Colors.black,
-                          radius: 12,
+                          radius: 14,
                           child: Icon(Icons.person, color: Colors.white, size: 16),
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          'Dibuat oleh: Toko Elektronik',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                        Expanded(
+                          child: Text(
+                            'Penjual: ${_foundTransaction!.sellerName ?? 'Pengguna'}',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
+                    const SizedBox(height: 20),
+                    BrutalistButton(
+                      text: 'LIHAT DETAIL TRANSAKSI',
+                      backgroundColor: AppColors.tealGreen,
+                      textColor: Colors.black,
+                      onPressed: () {
+                        context.push('/transaction/${_foundTransaction!.id}');
+                      },
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
-              BrutalistButton(
-                text: 'GABUNG SEKARANG',
-                onPressed: () {
-                  // Action
-                },
-                backgroundColor: AppColors.tealGreen,
-              ),
-            ] else 
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 40),
-                  child: Column(
-                    children: [
-                      Icon(Icons.search_off_rounded, size: 64, color: Colors.black.withValues(alpha: 0.2)),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Belum ada transaksi dicari',
-                        style: GoogleFonts.spaceGrotesk(
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            ],
           ],
         ),
       ),
