@@ -156,5 +156,14 @@ Awaiting Payment → Escrow (Paid) → Processed → Shipped → Completed
                                                  Disputed → Completed/Refunded
 ```
 
+## 💬 Realtime Chat & Multi-Instance Scaling
+
+Backend Rekber menggunakan **Socket.IO** yang terintegrasi pada server HTTP untuk komunikasi percakapan transaksi secara realtime (`message:new`, `message:read`, `typing`).
+
+### Skalabilitas Multi-Instance (Horizontal Scaling)
+Pada deployment berskala besar dengan banyak instans server (klaster multi-node/pod):
+- Koneksi socket secara default dikelola di memori lokal masing-masing proses.
+- Untuk menyebarkan pesan dan status ruangan (`tx:{id}`) secara merata antar-instans, **dibutuhkan adapter Redis** (seperti paket `@socket.io/redis-adapter` atau Redis Streams) yang terhubung ke instance Redis bersama.
+
 ## 📄 License
 Proprietary — All rights reserved.
