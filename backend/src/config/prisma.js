@@ -17,11 +17,20 @@ const config = require('./index');
 const globalForPrisma = globalThis;
 
 if (!globalForPrisma.prisma) {
-  // Use connection pool with minimum 20 connections for concurrency & finance testing
+  // Connection pool with configurable limits and timeouts via environment variables
+  const poolMax = parseInt(process.env.DB_POOL_MAX || '25', 10);
+  const poolMin = parseInt(process.env.DB_POOL_MIN || '5', 10);
+  const idleTimeoutMillis = parseInt(process.env.DB_IDLE_TIMEOUT_MS || '30000', 10);
+  const connectionTimeoutMillis = parseInt(process.env.DB_CONNECTION_TIMEOUT_MS || '5000', 10);
+
   const pool = new Pool({
     connectionString: config.databaseUrl,
-    max: 25,
+    max: poolMax,
+    min: poolMin,
+    idleTimeoutMillis,
+    connectionTimeoutMillis,
   });
+
   const adapter = new PrismaPg(pool);
 
   globalForPrisma.prisma = new PrismaClient({
