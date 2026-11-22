@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/constants/app_colors.dart';
-import 'package:go_router/go_router.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_event.dart';
 
 class AdminSettingsScreen extends StatelessWidget {
   const AdminSettingsScreen({super.key});
@@ -39,9 +42,9 @@ class AdminSettingsScreen extends StatelessWidget {
           ),
           _buildMenuButton(
             context,
-            'BROADCAST PENGUMUMAN',
-            Icons.campaign_rounded,
-            () => _showAdminBroadcastDialog(context),
+            'PERSETUJUAN PENARIKAN',
+            Icons.payments_rounded,
+            () => context.push('/admin/withdrawals'),
           ),
           _buildMenuButton(
             context,
@@ -51,8 +54,8 @@ class AdminSettingsScreen extends StatelessWidget {
           ),
           _buildMenuButton(
             context,
-            'SISTEM & KEAMANAN',
-            Icons.settings_suggest_rounded,
+            'SISTEM & LOG AUDIT',
+            Icons.history_edu_rounded,
             () => context.push('/admin/settings/system'),
           ),
           const SizedBox(height: 24),
@@ -89,83 +92,31 @@ class AdminSettingsScreen extends StatelessWidget {
     );
   }
 
-  void _showAdminBroadcastDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.white,
-        shape: const RoundedRectangleBorder(
-            side: BorderSide(color: AppColors.black, width: 3)),
-        title: Text(
-          'BROADCAST PESAN',
-          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w900),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const BrutalistTextField(
-              hintText: 'Tulis pesan pengumuman...',
-              prefixIcon: Icons.message_rounded,
-            ),
-            const SizedBox(height: 20),
-            Text(
-              'Pesan ini akan dikirimkan ke semua pengguna terdaftar.',
-              style: GoogleFonts.spaceGrotesk(fontSize: 10, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'BATAL',
-              style: GoogleFonts.spaceGrotesk(
-                  color: Colors.grey, fontWeight: FontWeight.w900),
-            ),
-          ),
-          BrutalistButton(
-            text: 'KIRIM SEKARANG',
-            backgroundColor: Colors.cyanAccent,
-            height: 40,
-            width: 150,
-            borderRadius: 4,
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Pengumuman Berhasil Dikirim'),
-                  backgroundColor: AppColors.black,
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showAdminLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
         shape: const RoundedRectangleBorder(
-            side: BorderSide(color: AppColors.black, width: 3)),
+          side: BorderSide(color: AppColors.black, width: 3),
+        ),
         title: Text(
           'KELUAR MODE ADMIN?',
           style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w900),
         ),
         content: Text(
-          'Anda akan dikembalikan ke halaman Login.',
+          'Sesi login administrator Anda akan dihentikan.',
           style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: Text(
               'BATAL',
               style: GoogleFonts.spaceGrotesk(
-                  color: Colors.grey, fontWeight: FontWeight.w900),
+                color: Colors.grey,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
           BrutalistButton(
@@ -176,8 +127,8 @@ class AdminSettingsScreen extends StatelessWidget {
             width: 140,
             borderRadius: 4,
             onPressed: () {
-              Navigator.pop(context);
-              context.go('/login');
+              Navigator.pop(ctx);
+              context.read<AuthBloc>().add(AuthLogoutRequested());
             },
           ),
         ],
