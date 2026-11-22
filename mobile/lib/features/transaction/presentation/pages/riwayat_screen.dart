@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/widgets/brutal_skeleton.dart';
 import '../../../../core/utils/currency_formatter.dart';
-import '../../domain/entities/transaction_entity.dart';
-import '../../data/models/transaction_model.dart';
-import '../../../../injection_container.dart';
-import '../../../../core/services/api_service.dart';
+import '../cubit/transaction_cubit.dart';
+import '../cubit/transaction_state.dart';
+import '../../domain/services/escrow_state_machine.dart';
 
 class RiwayatScreen extends StatefulWidget {
   const RiwayatScreen({super.key});
@@ -17,32 +18,12 @@ class RiwayatScreen extends StatefulWidget {
 }
 
 class _RiwayatScreenState extends State<RiwayatScreen> {
-  bool isLoading = true;
-  List<TransactionEntity> riwayat = [];
-
   @override
   void initState() {
     super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    setState(() => isLoading = true);
-    try {
-      final response = await sl<ApiService>().get('/transactions');
-      if (response != null && response['data'] != null) {
-        final List<dynamic> data = response['data'];
-        setState(() {
-          riwayat = data.map((e) => TransactionModel.fromJson(e)).toList();
-        });
-      }
-    } catch (e) {
-      debugPrint('Error loading history: $e');
-    } finally {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TransactionCubit>().loadTransactions();
+    });
   }
 
   @override
@@ -61,104 +42,198 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
           ),
         ),
         centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.black),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         shape: const Border(
           bottom: BorderSide(color: Colors.black, width: 2.0),
         ),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(24),
-        itemCount: isLoading ? 5 : riwayat.length,
-        itemBuilder: (context, index) {
-          if (isLoading) {
-            return const Padding(
-              padding: EdgeInsets.only(bottom: 16),
-              child: BrutalSkeletonCard(),
+      body: BlocBuilder<TransactionCubit, TransactionState>(
+        builder: (context, state) {
+          if (state is TransactionLoading) {
+            return ListView.builder(
+              padding: const EdgeInsets.all(24),
+              itemCount: 5,
+              itemBuilder: (context, index) => const Padding(
+                padding: EdgeInsets.only(bottom: 16),
+                child: BrutalSkeletonCard(),
+              ),
             );
           }
 
-          final item = riwayat[index];
-          final isCompleted = item.status == 'completed';
-          
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: BrutalistCard(
-              backgroundColor: Colors.white,
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: isCompleted ? AppColors.success : AppColors.error,
-                      border: Border.all(color: Colors.black, width: 2.0),
-                    ),
-                    child: Icon(
-                      isCompleted 
-                        ? Icons.check_circle_outline_rounded 
-                        : Icons.cancel_outlined,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item.description ?? 'Tanpa Deskripsi',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 14,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          '${item.createdAt.day}/${item.createdAt.month}/${item.createdAt.year}',
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                            color: Colors.black.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+          if (state is TransactionError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: BrutalistCard(
+                  backgroundColor: AppColors.paleYellow,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
+                      const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 48),
+                      const SizedBox(height: 12),
                       Text(
-                        CurrencyFormatter.format(item.amount),
-                        style: GoogleFonts.spaceGrotesk(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                        ),
+                        state.message,
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, fontSize: 14),
                       ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isCompleted ? AppColors.success : AppColors.error,
-                          border: Border.all(color: Colors.black, width: 1.5),
-                        ),
-                        child: Text(
-                          item.status.toUpperCase(),
-                          style: GoogleFonts.spaceGrotesk(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 8,
-                          ),
-                        ),
+                      const SizedBox(height: 16),
+                      BrutalistButton(
+                        text: 'COBA LAGI',
+                        backgroundColor: AppColors.black,
+                        textColor: AppColors.white,
+                        onPressed: () => context.read<TransactionCubit>().loadTransactions(),
                       ),
                     ],
                   ),
+                ),
+              ),
+            );
+          }
+
+          final transactions = (state is TransactionListLoaded)
+              ? state.transactions
+              : context.read<TransactionCubit>().currentList;
+
+          if (transactions.isEmpty) {
+            return RefreshIndicator(
+              onRefresh: () => context.read<TransactionCubit>().loadTransactions(),
+              color: AppColors.black,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.inbox_outlined, size: 64, color: AppColors.textSecondary),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Belum Ada Riwayat Transaksi',
+                            style: GoogleFonts.spaceGrotesk(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Transaksi yang Anda buat atau ikuti akan muncul di sini.',
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.spaceGrotesk(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
+            );
+          }
+
+          return RefreshIndicator(
+            onRefresh: () => context.read<TransactionCubit>().loadTransactions(),
+            color: AppColors.black,
+            child: ListView.builder(
+              padding: const EdgeInsets.all(24),
+              itemCount: transactions.length,
+              itemBuilder: (context, index) {
+                final item = transactions[index];
+                final statusColor = AppColors.getStatusColor(item.status);
+                final statusLabel = EscrowStateMachine.getStatusLabel(item.status);
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: BrutalistBounce(
+                    onTap: () => context.push('/transaction/${item.id}'),
+                    child: BrutalistCard(
+                      backgroundColor: Colors.white,
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              border: Border.all(color: Colors.black, width: 2.0),
+                            ),
+                            child: const Icon(
+                              Icons.receipt_rounded,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.description ?? 'Tanpa Deskripsi',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 14,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${item.txCode} • ${item.createdAt.day.toString().padLeft(2, '0')}/${item.createdAt.month.toString().padLeft(2, '0')}/${item.createdAt.year}',
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: Colors.black.withValues(alpha: 0.6),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                CurrencyFormatter.format(item.amount),
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  border: Border.all(color: Colors.black, width: 1.5),
+                                ),
+                                child: Text(
+                                  statusLabel,
+                                  style: GoogleFonts.spaceGrotesk(
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 10,
+                                    color: Colors.black,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           );
         },
@@ -166,4 +241,3 @@ class _RiwayatScreenState extends State<RiwayatScreen> {
     );
   }
 }
-
