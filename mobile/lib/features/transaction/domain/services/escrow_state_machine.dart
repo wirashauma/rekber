@@ -1,11 +1,3 @@
-/// ============================================================
-/// REKBER - Escrow State Machine Service
-/// ============================================================
-/// Handles all transaction state transitions with validation,
-/// ensuring the escrow lifecycle is enforced correctly.
-/// ============================================================
-library;
-
 import 'package:dartz/dartz.dart';
 import '../../../../core/errors/failures.dart';
 
@@ -24,85 +16,104 @@ class EscrowTransition {
   });
 }
 
-/// Escrow State Machine — enforces the transaction lifecycle
+/// Escrow State Machine — enforces canonical backend status lifecycle
 class EscrowStateMachine {
   EscrowStateMachine._();
 
-  /// All valid transitions in the escrow lifecycle
-  static const List<EscrowTransition> _transitions = [
-    // Buyer creates → awaiting payment
-    EscrowTransition(
-      fromStatus: 'awaiting_payment',
-      toStatus: 'escrow',
-      requiredRole: 'system',
-      description: 'Payment confirmed, funds held in escrow',
-    ),
-    EscrowTransition(
-      fromStatus: 'awaiting_payment',
-      toStatus: 'cancelled',
-      requiredRole: 'buyer',
-      description: 'Buyer cancelled before payment',
-    ),
-
-    // Escrow → Seller processes
-    EscrowTransition(
-      fromStatus: 'escrow',
-      toStatus: 'processed',
-      requiredRole: 'seller',
-      description: 'Seller accepted and is processing order',
-    ),
-
-    // Processed → Seller ships
-    EscrowTransition(
-      fromStatus: 'processed',
-      toStatus: 'shipped',
-      requiredRole: 'seller',
-      description: 'Seller shipped the order with proof',
-    ),
-
-    // Shipped → Buyer confirms or disputes
-    EscrowTransition(
-      fromStatus: 'shipped',
-      toStatus: 'completed',
-      requiredRole: 'buyer',
-      description: 'Buyer confirmed receipt, funds released',
-    ),
-    EscrowTransition(
-      fromStatus: 'shipped',
-      toStatus: 'disputed',
-      requiredRole: 'buyer',
-      description: 'Buyer raised a dispute',
-    ),
-
-    // Disputed → Admin resolves
-    EscrowTransition(
-      fromStatus: 'disputed',
-      toStatus: 'completed',
-      requiredRole: 'admin',
-      description: 'Admin resolved dispute in seller favor',
-    ),
-    EscrowTransition(
-      fromStatus: 'disputed',
-      toStatus: 'refunded',
-      requiredRole: 'admin',
-      description: 'Admin resolved dispute in buyer favor',
-    ),
+  /// Canonical status order for progress display
+  static const List<String> statusOrder = [
+    'PENDING',
+    'PAID',
+    'SHIPPED',
+    'COMPLETED',
   ];
 
   /// Terminal states — no further transitions possible
   static const Set<String> terminalStates = {
-    'completed',
-    'refunded',
-    'cancelled',
+    'COMPLETED',
+    'REFUNDED',
+    'CANCELLED',
   };
 
-  /// All possible statuses in order
-  static const List<String> statusOrder = [
-    'awaiting_payment',
-    'escrow',
-    'processed',
-    'shipped',
-    'completed',
+  /// All valid transitions in the escrow lifecycle
+  static const List<EscrowTransition> _transitions = [
+    // PENDING -> PAID (buyer pays from balance / gateway webhook)
+    EscrowTransition(
+      fromStatus: 'PENDING',
+      toStatus: 'PAID',
+      requiredRole: 'buyer',
+      description: 'Pembeli melakukan pembayaran, dana ditahan di rekber',
+    ),
+    EscrowTransition(
+      fromStatus: 'PENDING',
+      toStatus: 'PAID',
+      requiredRole: 'system',
+      description: 'Pembayaran diverifikasi oleh sistem, dana masuk ke escrow',
+    ),
+
+    // PENDING -> CANCELLED (buyer or seller cancels before payment)
+    EscrowTransition(
+      fromStatus: 'PENDING',
+      toStatus: 'CANCELLED',
+      requiredRole: 'buyer',
+      description: 'Pembeli membatalkan transaksi sebelum pembayaran',
+    ),
+    EscrowTransition(
+      fromStatus: 'PENDING',
+      toStatus: 'CANCELLED',
+      requiredRole: 'seller',
+      description: 'Penjual membatalkan transaksi sebelum pembayaran',
+    ),
+
+    // PAID -> SHIPPED (seller ships the product and uploads proof)
+    EscrowTransition(
+      fromStatus: 'PAID',
+      toStatus: 'SHIPPED',
+      requiredRole: 'seller',
+      description: 'Penjual mengirimkan barang pesanan dengan bukti pengiriman',
+    ),
+
+    // SHIPPED -> COMPLETED (buyer confirms receipt, funds released to seller)
+    EscrowTransition(
+      fromStatus: 'SHIPPED',
+      toStatus: 'COMPLETED',
+      requiredRole: 'buyer',
+      description: 'Pembeli mengonfirmasi penerimaan barang, dana diteruskan ke penjual',
+    ),
+    EscrowTransition(
+      fromStatus: 'SHIPPED',
+      toStatus: 'COMPLETED',
+      requiredRole: 'system',
+      description: 'Auto-release setelah batas waktu tercapai, dana dilepas ke penjual',
+    ),
+
+    // PAID or SHIPPED -> DISPUTED (buyer raises dispute)
+    EscrowTransition(
+      fromStatus: 'PAID',
+      toStatus: 'DISPUTED',
+      requiredRole: 'buyer',
+      description: 'Pembeli mengajukan sengketa',
+    ),
+    EscrowTransition(
+      fromStatus: 'SHIPPED',
+      toStatus: 'DISPUTED',
+      requiredRole: 'buyer',
+      description: 'Pembeli mengajukan sengketa pengiriman/barang',
+    ),
+
+    // DISPUTED -> COMPLETED / REFUNDED (admin resolves dispute)
+    EscrowTransition(
+      fromStatus: 'DISPUTED',
+      toStatus: 'COMPLETED',
+      requiredRole: 'admin',
+      description: 'Admin memenangkan penjual, dana diteruskan ke penjual',
+    ),
+    EscrowTransition(
+      fromStatus: 'DISPUTED',
+      toStatus: 'REFUNDED',
+      requiredRole: 'admin',
+      description: 'Admin memenangkan pembeli, dana dikembalikan ke pembeli',
+    ),
   ];
 
   /// Validate if a transition is allowed
@@ -111,28 +122,32 @@ class EscrowStateMachine {
     required String targetStatus,
     required String userRole,
   }) {
-    // Check if current status is terminal
-    if (terminalStates.contains(currentStatus)) {
+    final cur = currentStatus.toUpperCase();
+    final tgt = targetStatus.toUpperCase();
+
+    if (terminalStates.contains(cur)) {
       return Left(ValidationFailure(
-        message: 'Transaksi sudah selesai dengan status: $currentStatus',
+        message: 'Transaksi sudah selesai dengan status: ${getStatusLabel(cur)}',
       ));
     }
 
-    // Find matching transition
-    final transition = _transitions.where(
-      (t) => t.fromStatus == currentStatus && t.toStatus == targetStatus,
+    final matches = _transitions.where(
+      (t) => t.fromStatus == cur && t.toStatus == tgt,
     );
 
-    if (transition.isEmpty) {
+    if (matches.isEmpty) {
       return Left(ValidationFailure(
-        message: 'Tidak dapat mengubah status dari $currentStatus ke $targetStatus',
+        message: 'Tidak dapat mengubah status dari ${getStatusLabel(cur)} ke ${getStatusLabel(tgt)}',
       ));
     }
 
-    final validTransition = transition.first;
+    final role = userRole.toLowerCase();
+    final validTransition = matches.firstWhere(
+      (t) => t.requiredRole == role || t.requiredRole == 'system',
+      orElse: () => matches.first,
+    );
 
-    // Check role authorization
-    if (validTransition.requiredRole != userRole &&
+    if (validTransition.requiredRole != role &&
         validTransition.requiredRole != 'system') {
       return Left(PermissionFailure(
         message: 'Hanya ${_getRoleLabel(validTransition.requiredRole)} yang dapat melakukan aksi ini',
@@ -142,75 +157,81 @@ class EscrowStateMachine {
     return Right(validTransition);
   }
 
-  /// Get available next statuses for a given current status and role
-  static List<String> getAvailableTransitions({
-    required String currentStatus,
-    required String userRole,
-  }) {
-    return _transitions
-        .where((t) =>
-            t.fromStatus == currentStatus &&
-            (t.requiredRole == userRole || t.requiredRole == 'system'))
-        .map((t) => t.toStatus)
-        .toList();
+  /// Get current step index (0-based) for stepper
+  static int getStepIndex(String status) {
+    final index = statusOrder.indexOf(status.toUpperCase());
+    return index >= 0 ? index : 0;
   }
 
-  /// Get the progress percentage (0.0 to 1.0) for the status tracker
+  /// Get progress percentage (0.0 to 1.0)
   static double getProgressPercent(String status) {
-    final index = statusOrder.indexOf(status);
+    final s = status.toUpperCase();
+    final index = statusOrder.indexOf(s);
     if (index == -1) {
-      // Handle non-standard statuses
-      if (status == 'disputed') return 0.8;
-      if (status == 'refunded') return 1.0;
-      if (status == 'cancelled') return 0.0;
+      if (s == 'DISPUTED') return 0.75;
+      if (s == 'REFUNDED') return 1.0;
+      if (s == 'CANCELLED') return 0.0;
       return 0.0;
     }
     return index / (statusOrder.length - 1);
   }
 
-  /// Get the current step index (for stepper widgets)
-  static int getStepIndex(String status) {
-    final index = statusOrder.indexOf(status);
-    return index >= 0 ? index : 0;
-  }
-
-  /// Get human-readable status label in Indonesian
+  /// Indonesian human-readable label
   static String getStatusLabel(String status) {
-    const labels = {
-      'awaiting_payment': 'Menunggu Pembayaran',
-      'escrow': 'Dana Ditahan',
-      'processed': 'Diproses Penjual',
-      'shipped': 'Dikirim',
-      'completed': 'Selesai',
-      'disputed': 'Sengketa',
-      'refunded': 'Dana Dikembalikan',
-      'cancelled': 'Dibatalkan',
-    };
-    return labels[status] ?? status;
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+        return 'Menunggu Pembayaran';
+      case 'PAID':
+        return 'Dana Ditahan di Rekber';
+      case 'SHIPPED':
+        return 'Barang Dikirim';
+      case 'COMPLETED':
+        return 'Selesai';
+      case 'CANCELLED':
+        return 'Dibatalkan';
+      case 'DISPUTED':
+        return 'Dalam Sengketa';
+      case 'REFUNDED':
+        return 'Dana Dikembalikan';
+      default:
+        return status;
+    }
   }
 
-  /// Get status description for the detail screen
+  /// Detailed Indonesian description
   static String getStatusDescription(String status) {
-    const descriptions = {
-      'awaiting_payment': 'Silakan lakukan pembayaran sebelum batas waktu berakhir.',
-      'escrow': 'Pembayaran berhasil. Dana aman ditahan oleh REKBER hingga transaksi selesai.',
-      'processed': 'Penjual sedang memproses pesanan Anda.',
-      'shipped': 'Pesanan telah dikirim. Silakan konfirmasi setelah menerima barang.',
-      'completed': 'Transaksi selesai. Dana telah dilepas ke penjual.',
-      'disputed': 'Sengketa sedang ditinjau oleh admin. Harap tunggu keputusan.',
-      'refunded': 'Sengketa diselesaikan. Dana telah dikembalikan ke pembeli.',
-      'cancelled': 'Transaksi dibatalkan.',
-    };
-    return descriptions[status] ?? '';
+    switch (status.toUpperCase()) {
+      case 'PENDING':
+        return 'Silakan lakukan pembayaran sebelum batas waktu berakhir.';
+      case 'PAID':
+        return 'Pembayaran berhasil. Dana aman ditahan oleh REKBER hingga barang diterima.';
+      case 'SHIPPED':
+        return 'Penjual telah mengirimkan pesanan. Mohon periksa barang sebelum konfirmasi.';
+      case 'COMPLETED':
+        return 'Transaksi selesai. Dana telah diteruskan ke penjual.';
+      case 'CANCELLED':
+        return 'Transaksi telah dibatalkan.';
+      case 'DISPUTED':
+        return 'Sengketa sedang ditinjau oleh Admin REKBER.';
+      case 'REFUNDED':
+        return 'Sengketa diselesaikan. Dana telah dikembalikan ke saldo pembeli.';
+      default:
+        return '';
+    }
   }
 
   static String _getRoleLabel(String role) {
-    const labels = {
-      'buyer': 'Pembeli',
-      'seller': 'Penjual',
-      'admin': 'Admin',
-      'system': 'Sistem',
-    };
-    return labels[role] ?? role;
+    switch (role.toLowerCase()) {
+      case 'buyer':
+        return 'Pembeli';
+      case 'seller':
+        return 'Penjual';
+      case 'admin':
+        return 'Admin';
+      case 'system':
+        return 'Sistem';
+      default:
+        return role;
+    }
   }
 }
