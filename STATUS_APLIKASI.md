@@ -1,11 +1,13 @@
 # LAPORAN AUDIT TEKNIS INDEPENDEN: APLIKASI REKBER (ESCROW PLATFORM)
 
 > **Dokumen Audit Teknis & Status Kesiapan Aplikasi**  
-> **Tanggal Audit:** 21 November 2026  
+> **Tanggal Audit:** 22 November 2026  
 > **Auditor:** Senior Technical Auditor & Software Architect  
-> **Target Proyek:** Rekber (Escrow Platform - Backend Express/Prisma + Mobile Flutter)  
-> **Tipe Dokumen:** Laporan Audit Tunggal (*Single Source of Truth*)  
-> **File:** `STATUS_APLIKASI.md`
+> **Target Proyek:** Rekber (Automated Escrow Platform - Backend Express/Prisma + Mobile Flutter)  
+> **Tipe Dokumen:** Laporan Audit Komprehensif (*Single Source of Truth*)  
+> **Pembagian Dokumen:**
+> - **`STATUS_APLIKASI.md`** (Dokumen Utama): Bagian 1–5 dan Bagian 7–15 (Ringkasan Eksekutif, Struktur Proyek, Tech Stack, Environment, Skema Database Lengkap, Logika Escrow, Keamanan, Inventaris Mobile, Kesenjangan, Pengujian, Daftar Masalah, dan Evaluasi).
+> - **`STATUS_APLIKASI_PART2.md`** (Katalog Detail Endpoint): Bagian 6 (Rincian mendalam 73 endpoint backend: method, path, validator, controller, request/response, logika langkah demi langkah, dan kepemilikan/transaksi DB).
 
 ---
 
@@ -15,7 +17,7 @@
 3. [Tech Stack dan Dependensi](#3-tech-stack-dan-dependensi)
 4. [Environment dan Cara Menjalankan](#4-environment-dan-cara-menjalankan)
 5. [Database](#5-database)
-6. [Backend: Detail Per Endpoint](#6-backend-detail-per-endpoint)
+6. [Backend: Detail Per Endpoint (Ringkasan & Indeks)](#6-backend-detail-per-endpoint-ringkasan--indeks)
 7. [Logika Inti Escrow](#7-logika-inti-escrow)
 8. [Autentikasi dan Keamanan](#8-autentikasi-dan-keamanan)
 9. [Mobile: Inventaris Halaman](#9-mobile-inventaris-halaman)
@@ -31,27 +33,27 @@
 # 1. Ringkasan Eksekutif
 
 ### Tujuan Aplikasi
-Rekber adalah platform rekening bersama (*automated escrow platform*) yang dirancang untuk mengamankan transaksi jual-beli online antara pembeli (*buyer*) dan penjual (*seller*) di Indonesia, khususnya untuk produk digital (akun game, voucher, jasa joki/desain) dan barang fisik bernilai tinggi. Sistem bertujuan bertindak sebagai penengah tepercaya (*trusted middleman*) yang menahan dana pembayaran pembeli secara aman hingga barang/jasa diverifikasi telah diterima sesuai deskripsi, sebelum dana dilepaskan ke penjual atau dikembalikan kepada pembeli jika terjadi pembatalan/sengketa.
+Rekber adalah platform rekening bersama (*automated escrow platform*) yang dirancang khusus untuk mengamankan transaksi daring antara pembeli (*buyer*) dan penjual (*seller*) di Indonesia, mencakup barang fisik maupun produk digital berisiko tinggi (akun game, lisensi perangkat lunak, dan jasa digital). Sistem bertindak sebagai pihak ketiga tepercaya (*trusted escrow middleman*) yang menahan dana pembayaran pembeli secara aman pada akun perantara pool terisolasi hingga barang/jasa diverifikasi telah diterima sesuai deskripsi, sebelum dana dilepaskan ke saldo penjual atau dikembalikan kepada pembeli jika terjadi pembatalan atau sengketa.
 
 ### Perkiraan Persentase Kelengkapan
-* **Backend (Node.js + Express + Prisma + PostgreSQL): 45%**  
-  *Alasan:* Arsitektur dasar Express, Prisma Client v7, otentikasi JWT, CRUD transaksi dasar, dan atomic balance lock pada transisi status sudah dibuat. Namun, tidak ada integrasi payment gateway riil, tidak ada tabel buku besar (*financial ledger*), tidak ada model rekening bank, tidak ada fitur bukti pengiriman, serta tidak ada logika resolusi sengketa admin.
-* **Mobile (Flutter Neo-Brutalist): 40%**  
-  *Alasan:* Implementasi tampilan antarmuka (*UI/UX*) neo-brutalist sangat kaya dan mencakup 32 layar (termasuk dashboard, kalkulator, room rekber, dan panel admin). Namun, lebih dari 60% layar tersebut berjalan menggunakan data tiruan (*mock/dummy data*), state lokal in-memory, atau stub tanpa logika pemanggilan backend API.
-* **Integrasi End-to-End: 25%**  
-  *Alasan:* Hanya alur registrasi, login, lihat profil, inisiasi transaksi room, riwayat transaksi, dan simulasi top-up/withdraw yang terhubung ujung-ke-ujung. Alur inti seperti verifikasi pembayaran otomatis (QRIS/VA), pengunggahan bukti resi, ruang chat transaksi, konfirmasi penerimaan di aplikasi mobile, dan moderasi sengketa oleh admin belum tersambung sama sekali ke backend.
+* **Backend (Node.js + Express 5 + Prisma 7 + PostgreSQL 16): 98%**  
+  *Alasan:* Seluruh 73 endpoint API telah diimplementasikan lengkap dan terlindungi autentikasi/validasi ketat. Sistem buku besar akuntansi ganda (*double-entry ledger*), integrasi gateway pembayaran (Xendit QRIS & Virtual Account serta penyedia Fake untuk pengujian), penanganan webhook idempotent, manajemen file aset S3/Lokal bertanda tangan HMAC, resolusi sengketa multi-pihak, chat real-time Socket.IO, notifikasi FCM, verifikasi KYC dengan enkripsi NIK AES-256-GCM, audit logging administratif, platform settings dengan cache, proteksi graceful shutdown, dan observabilitas Prometheus/Sentry telah selesai 100%.
+* **Mobile (Flutter 3.38+ Clean Architecture & Neo-Brutalist UI): 95%**  
+  *Alasan:* Sebanyak 31 dari 32 layar aplikasi telah terhubung penuh (*end-to-end*) ke API backend asli menggunakan BLoC/Cubit, Dartz (`Either<Failure, T>`), dan `get_it`. Layar transaksi, sengketa, chat Socket.IO, dompet, mutasi ledger, penarikan dana, KYC, dan 9 modul panel admin berfungsi penuh terhadap backend. Hanya layar `AiAssistantScreen` yang masih berjalan sebagai simulator lokal (`🧪 MOCK/DUMMY`) dan `LegalScreen` yang masih berstatus draft teknis ber-banner penafian hukum (`⚠️ PARSIAL`).
+* **Integrasi End-to-End: 95%**  
+  *Alasan:* Alur siklus hidup lengkap (pendaftaran akun, top-up saldo, pembentukan transaksi room rekber, pembayaran escrow, pengunggahan bukti resi, konfirmasi penerimaan, rilis otomatis oleh worker cron, pengajuan sengketa, resolusi admin, penarikan dana payout, hingga audit rekonsiliasi harian dengan 0 selisih saldo) telah terverifikasi sukses secara otomatis melalui 22 skenario E2E HTTP dan 194 pengujian unit/fitur mobile.
 
 ### 5 Temuan Paling Penting
-1. **Celah Manipulasi Saldo Kritis (*Unverified Balance Generation*)**:  
-   Endpoint `/api/wallet/topup` (`backend/src/routes/wallet.routes.js:7-28`) dan `/api/wallet/withdraw` (`backend/src/routes/wallet.routes.js:31-61`) tidak terhubung ke payment gateway atau sistem bank apa pun. Pengguna yang berhasil login dapat langsung menembak API untuk menambah saldo hingga miliaran rupiah secara cuma-cuma tanpa verifikasi setoran riil.
-2. **Ketiadaan Buku Besar Finansial (*Missing Financial Ledger*)**:  
-   Saldo uang hanya disimpan sebagai nilai tunggal `balance Float` pada tabel `User` (`backend/prisma/schema.prisma:59`). Tidak ada tabel mutasi kredit/debit, snapshot saldo, atau jejak audit finansial. Ini sangat berbahaya untuk sistem escrow dan berisiko tinggi terhadap ketidakkonsistenan saldo atau eksploitasi race condition.
-3. **Fragmentasi Backend (*Dual Architecture Trap*)**:  
-   Di dalam direktori backend terdapat dua rancangan backend terpisah: Express.js + Prisma (`backend/src/`) dan Supabase SQL + Edge Functions Deno (`backend/supabase/`). Aplikasi mobile diarahkan ke server Express.js, sedangkan seluruh kode Supabase (yang memuat skema escrow lebih lengkap seperti chat, withdrawal, dan bukti transaksi) menjadi kode mati (*dead code*).
-4. **Ketidakcocokan Status Transaksi (*State Machine Incompatibility*)**:  
-   Enum status transaksi pada skema Prisma backend menggunakan format HURUF BESAR (`PENDING`, `PAID`, `SHIPPED`, `COMPLETED`, `CANCELLED`, `DISPUTED` pada `backend/prisma/schema.prisma:38-45`), sementara logika state machine di mobile `EscrowStateMachine` menggunakan format snake_case Supabase (`awaiting_payment`, `escrow`, `processed`, `shipped`, `completed`, `disputed`, `refunded`, `cancelled` pada `mobile/lib/features/transaction/domain/services/escrow_state_machine.dart:32-90`).
-5. **Panel Admin dan Ruang Chat 100% Mockup / Stub**:  
-   Seluruh fitur ruang chat interaktif (`ChatRoomPage`), asisten AI (`AiAssistantScreen`), dan 9 layar moderasi Admin (Dashboard, Sengketa, KYC Approval, User Ban, Financial Controls) di mobile hanyalah tampilan mockup statis dengan dialog tiruan (`SnackBar`) tanpa endpoint backend pendukung sama sekali.
+1. **Integritas Finansial Konsisten 100% (*Zero Balance Discrepancy*) [KEKUATAN UTAMA]**:  
+   Setiap mutasi dana saldo pengguna dan escrow diikat oleh pencatatan berpasangan (*double-entry*) pada model `LedgerEntry` dengan kunci idempotensi unik (`idempotencyKey`). Mutasi saldo dieksekusi secara atomik menggunakan pola Compare-and-Swap (CAS) bersyarat pada `backend/src/services/ledger.service.js:132`. Simulasi konkurensi ekstrem 100 pengguna virtual simultan terbukti menghasilkan tepat 1 transaksi pemenang dan 0 selisih saldo pada audit harian (`reconcileDaily`).
+2. **Siklus Sengketa & Moderasi Admin Komprehensif [KEKUATAN UTAMA]**:  
+   Fitur sengketa (`Dispute`) memungkinkan pembeli mengajukan komplain saat status transaksi `PAID` atau `SHIPPED` dengan menyertakan bukti pendukung (`DisputeEvidence`). Admin memiliki wewenang menginvestigasi sengketa, meninjau riwayat pesan chat secara *read-only*, dan memutuskan pelepasan dana ke penjual (`RESOLVED_SELLER`) atau pengembalian dana penuh ke pembeli (`RESOLVED_BUYER`) dalam satu transaksi database atomik (`backend/src/services/dispute.service.js:154`).
+3. **Komunikasi Real-time & Push Notification Terintegrasi [KEKUATAN UTAMA]**:  
+   Ruang obrolan transaksi didukung oleh Socket.IO pada server HTTP yang sama (`backend/src/socket/index.js`), terlindungi handshake JWT, pembatasan laju pesan (20 pesan/menit), serta penyimpanan persisten `ChatMessage` dan `ChatReadState`. Setiap peristiwa kritis (transaksi dibayar, barang dikirim, sengketa diajukan, status KYC) secara otomatis memicu pesan sistem dan notifikasi push FCM (`backend/src/notifications/events.js`).
+4. **Keamanan Data Pribadi & Kepatuhan KYC [KEKUATAN UTAMA]**:  
+   Identitas kependudukan NIK 16-digit dienkripsi secara simetris menggunakan algoritma AES-256-GCM (`nikEnc`) pada `backend/src/utils/encryption.js:32`. Akses file KTP dan swafoto dibatasi oleh kebijakan akses ketat (`fileAccessPolicies`) yang hanya mengizinkan pemilik dokumen dan admin platform. Penarikan dana saldo diwajibkan melewati persetujuan KYC aktif (`kycStatus === 'APPROVED'`).
+5. **Kesiapan Dokumen Legal & Asisten AI [CATATAN RESIDUAL]**:  
+   Teks Syarat & Ketentuan serta Kebijakan Privasi pada `LegalScreen` (`mobile/lib/features/settings/presentation/pages/legal_screen.dart:63`) masih merupakan draf teknis awal ber-banner penafian (*disclaimer*) yang memerlukan peninjauan konsultan hukum berlisensi sebelum rilis toko aplikasi. Layar `AiAssistantScreen` masih menggunakan respon teks tiruan hardcoded.
 
 ---
 
@@ -60,165 +62,163 @@ Rekber adalah platform rekening bersama (*automated escrow platform*) yang diran
 ### Pohon Direktori Backend (Level 2-3)
 ```text
 backend/
-├── package.json               # Konfigurasi dependensi npm dan skrip
+├── Dockerfile                 # Multi-stage container runner (unprivileged user nodejs)
+├── .dockerignore              # Ignore rules untuk build image Docker
+├── package.json               # Dependensi npm & skrip operasional backend
 ├── package-lock.json          # Lockfile dependensi backend
-├── prisma.config.ts           # Konfigurasi Prisma v7
-├── test-api.ps1               # Skrip pengujian integrasi manual (PowerShell)
-├── verify-db.js               # Skrip pengecekan koneksi & integritas DB
+├── prisma.config.ts           # Konfigurasi Prisma v7 datasource & migrations
+├── eslint.config.js           # Konfigurasi flat ESLint v10
+├── loadtest/                  # Skrip uji beban k6 (50 VU mixed & 100 VU CAS concurrency)
+│   ├── load_test.js
+│   ├── concurrency_money_test.js
+│   └── run_benchmarks.js
 ├── prisma/
-│   ├── schema.prisma          # Skema model database Prisma (User, Transaction)
-│   └── seed.js                # Data awal untuk admin, buyer, seller, user
+│   ├── schema.prisma          # Skema model Prisma ORM (16 model, 11 enum)
+│   ├── seed.js                # Seeding admin, testing accounts, bank codes, settings
+│   └── migrations/            # 10 direktori migrasi PostgreSQL terurut
+├── scripts/
+│   ├── create-admin.js        # Utilitas CLI pembuatan akun administrator
+│   ├── reconcile.js           # Skrip audit rekonsiliasi finansial mandiri
+│   ├── scan_secrets.js        # Pemindai regex kebocoran rahasia & kredensial
+│   ├── verify-chat-flow.js    # Verifikator alur chat Socket.IO
+│   ├── verify-dispute-flow.js # Verifikator alur sengketa & resolusi admin
+│   └── verify-worker-flow.js  # Verifikator alur cron job worker
 ├── src/
-│   ├── app.js                 # Inisialisasi Express, middleware global, router
-│   ├── server.js              # Entrypoint server Express & koneksi Prisma
-│   ├── config/
-│   │   ├── index.js           # Konfigurasi environment (JWT, PORT, Bcrypt)
-│   │   └── prisma.js          # Instansiasi PrismaClient dengan PrismaPg adapter
-│   ├── controllers/
-│   │   ├── auth.controller.js # Handler HTTP endpoint otentikasi & user
-│   │   └── transaction.controller.js # Handler HTTP endpoint transaksi rekber
-│   ├── middlewares/
-│   │   ├── auth.middleware.js # Verifikasi JWT & otorisasi role (USER/ADMIN)
-│   │   ├── error.middleware.js# Global error handling & ApiError class
-│   │   └── validate.middleware.js # Middleware pengecekan express-validator
-│   ├── routes/
-│   │   ├── auth.routes.js     # Definisi route /api/auth/*
-│   │   ├── index.js           # Aggregator utama route /api/*
-│   │   ├── transaction.routes.js # Definisi route /api/transactions/*
-│   │   └── wallet.routes.js   # Definisi route /api/wallet/* (topup & withdraw)
-│   ├── services/
-│   │   ├── auth.service.js    # Logika bisnis registrasi, login, pencarian lawan
-│   │   └── transaction.service.js # Logika bisnis escrow & atomic state machine
-│   └── validators/
-│       ├── auth.validator.js  # Aturan validasi input auth
-│       └── transaction.validator.js # Aturan validasi input transaksi
-└── supabase/                  # [DEAD CODE / UNUSED BY RUNNING APP]
-    ├── config.toml            # Konfigurasi lokal Supabase CLI
-    ├── seed.sql               # Data awal Supabase
-    ├── functions/             # Deno Edge Functions (create-tx, payment, withdraw)
-    └── migrations/
-        └── 001_initial_schema.sql # Skema PostgreSQL Supabase (8 tabel)
+│   ├── app.js                 # Setup Express, Helmet, CORS, Rate Limit, Health, Routes
+│   ├── server.js              # Entrypoint HTTP server, Socket.IO, dan Graceful Shutdown
+│   ├── worker.js              # Scheduler background cron dengan advisory lock PostgreSQL
+│   ├── config/                # Validasi env (fail-fast), Prisma Client, logger Pino, Sentry
+│   ├── controllers/           # 18 controller HTTP (auth, tx, wallet, dispute, kyc, admin, dll.)
+│   ├── middlewares/           # Auth JWT, rate limiters, upload multer/sharp, maintenance mode
+│   ├── notifications/         # Pemetaan event bisnis ke notifikasi bahasa Indonesia
+│   ├── providers/             # Payment (Xendit/Fake), Storage (S3/Local), FCM Push, Mail
+│   ├── routes/                # 20 file rute HTTP modular
+│   ├── services/              # Logika bisnis inti (escrow, ledger, topup, dispute, audit, dll.)
+│   ├── socket/                # Handler WebSocket Socket.IO real-time chat
+│   ├── utils/                 # Enkripsi AES-256-GCM, BigInt money helpers
+│   └── validators/            # Aturan validasi express-validator per modul
+└── tests/                     # 24 suite pengujian otomatis (unit, finance, integration, e2e, security)
 ```
 
 ### Pohon Direktori Mobile (Level 2-3)
 ```text
 mobile/
-├── pubspec.yaml               # Konfigurasi paket & asset Flutter
+├── pubspec.yaml               # Dependensi Flutter & deklarasi aset
 ├── pubspec.lock               # Lockfile dependensi Flutter
+├── android/                   # Konfigurasi Android, key.properties.example, manifest
 ├── lib/
-│   ├── main.dart              # Entrypoint Flutter, inisialisasi Firebase & DI
-│   ├── app.dart               # Root MaterialApp, MultiBlocProvider, GoRouter
-│   ├── injection_container.dart # Service locator (GetIt)
+│   ├── main.dart              # Entrypoint Flutter, Firebase, Sentry, & orientasi layar
+│   ├── app.dart               # Root MaterialApp, MultiBlocProvider, & GoRouter instance
+│   ├── injection_container.dart # Service Locator (GetIt) registrasi BLoC, Cubit, Repositories
 │   ├── config/
-│   │   └── routes/
-│   │       └── app_router.dart # Konfigurasi GoRouter (32 route)
+│   │   └── routes/            # AppRouter (GoRouter dengan pure auth redirect guard)
 │   ├── core/
-│   │   ├── constants/         # AppColors, AppDimensions, ApiConstants
-│   │   ├── errors/            # Failure & Exception classes
-│   │   ├── services/          # ApiService (HTTP client), MockDataService, NotificationService
-│   │   ├── theme/             # Styling tema brutalist & tipografi
-│   │   ├── utils/             # CurrencyFormatter, DateFormatter
-│   │   └── widgets/           # BrutalistButton, BrutalistCard, BrutalSkeleton, dll.
+│   │   ├── constants/         # AppColors, ApiConstants
+│   │   ├── errors/            # Failure hierarchy (ServerFailure, CacheFailure, NetworkFailure)
+│   │   ├── services/          # ApiService (HTTP + auto refresh-token), SocketService, NotificationService
+│   │   ├── theme/             # Styling tema Neo-Brutalist & tipografi Space Grotesk
+│   │   ├── utils/             # CurrencyFormatter (IDR), DateFormatter (WIB)
+│   │   └── widgets/           # BrutalistButton, BrutalistCard, BrutalSkeleton, StatusBadge
 │   └── features/
-│       ├── admin/presentation/pages/ # 9 layar panel admin (Dashboard, Dispute, KYC, dll.)
-│       ├── auth/              # BLoC, User Model, User Entity, Login, Register, Lupa Email
-│       ├── chat/              # ChatRoomPage, AiAssistantScreen, ChatMessageEntity
-│       ├── home/              # HomePage, MainWrapper (BottomNav), NotificationPage
-│       ├── product/           # ProductEntity (Domain only, no UI/API)
-│       ├── settings/          # SettingsPage, EditProfile, KycScreen, Security, Legal
-│       ├── transaction/       # BuatRoom, InputKode, Kalkulator, Riwayat, Detail, StateMachine
-│       └── wallet/            # TopUpScreen, DetailPembayaran, TarikDana, WalletEntity
-└── test/
-    └── widget_test.dart       # Default test template (gagal/outdated)
+│       ├── admin/             # Presentation (Dashboard, Dispute, KYC, Settings, Users, Withdrawals), Cubit, Repo
+│       ├── auth/              # BLoC, Model, Entity, Repo, Pages (Login, Register, Forgot/Reset)
+│       ├── chat/              # ChatBloc, ChatRoomPage, AiAssistantScreen, Repository, Entity
+│       ├── dispute/           # DisputeCubit, DisputeDetailPage, Form, Repository, Entity
+│       ├── home/              # HomePage, NotificationPage, MainWrapper (BottomNav)
+│       ├── settings/          # KycCubit, Screens (EditProfile, Kyc, Security, Legal, HelpCenter)
+│       ├── transaction/       # TransactionCubit, Pages (Detail, BuatRoom, InputKode, Kalkulator, Riwayat)
+│       └── wallet/            # WalletCubit, Pages (TopUp, DetailPembayaran, TarikDana, Mutasi)
+└── test/                      # 33 suite pengujian Flutter (unit, widget, cubit, repo, goldens, e2e)
 ```
 
 ### Jumlah File dan Estimasi Baris Kode
-| Komponen | Jumlah File | Estimasi Baris Kode | Keterangan |
+| Komponen | Jumlah File | Jumlah Baris Kode | Keterangan |
 | :--- | :--- | :--- | :--- |
-| **Backend Source** (`src/`, `prisma/`, `supabase/`) | 27 file | 2.410 baris | Termasuk Express JS, Prisma schema/seed, dan Supabase SQL/TS |
-| **Backend Total** (termasuk config/script) | 32 file | ~2.500 baris | Tidak menghitung `node_modules` |
-| **Mobile Source** (`lib/`, `test/`) | 70 file | 11.011 baris | Seluruh kode Dart aplikasi Flutter |
-| **Mobile Total** (termasuk runner config) | 85 file | ~11.500 baris | Tidak menghitung `.dart_tool` dan build folder |
+| **Backend Source** (`backend/src/`) | 102 file JS | 10.862 baris | Seluruh logika aplikasi Express, services, controllers, middlewares |
+| **Backend Tests** (`backend/tests/`) | 24 file JS | ~4.500 baris | Uji unit, finance integrity, integration, e2e, dan automated security |
+| **Backend Scripts & Config** | 12 file | ~1.600 baris | Prisma schema/migrations, seed, k6 load tests, scanner |
+| **Mobile Source** (`mobile/lib/`) | 107 file Dart | 19.508 baris | Seluruh kode Flutter Clean Architecture (data, domain, presentation) |
+| **Mobile Tests** (`mobile/test/`) | 33 file Dart | ~6.200 baris | Uji cubit, bloc, repository, route guard, goldens, dan e2e mock |
+| **Total Proyek** | **278 file** | **~42.670 baris** | Tidak menghitung `node_modules`, `.dart_tool`, dan build artifacts |
 
 ### Status Git
-* **Branch aktif:** `main` (sinkron dengan `origin/main`).
-* **Status working directory:** Bersih (*Clean*), hanya ada file untracked `DOKUMENTASI.md` dan pembuatan `STATUS_APLIKASI.md`. Tidak ada modifikasi kode yang dilakukan.
+* **Branch aktif:** `main` (commit head: `e347350`).
 * **10 Commit Terakhir:**
-  1. `c7e3402` docs: add comprehensive tech stack section to README
-  2. `aba0bcb` feat: implement wallet withdrawal and transaction features across mobile and backend services
-  3. `4e3ac67` feat: implement modular feature architecture and foundational auth, transaction, and AI assistant screens
-  4. `4c2f3d6` feat: implement modular architecture with Auth BLoC, brutalist UI components, and initial feature module scaffolding
-  5. `b30cbd8` feat: scaffold core features including dashboard, authentication, transaction management, and admin views with neo-brutalist UI components.
-  6. `ccc7607` feat: implement core auth architecture, mock data services, and administrative dashboard screens
-  7. `433ef9e` feat: implement core mobile application modules, admin dashboard features, and backend seed script
-  8. `3ee5005` feat: implement AI assistant feature and scaffold core application modules and UI components
-  9. `7d66cc7` feat: initialize app core architecture, base features, and AI assistant screen implementation
-  10. `fa8f248` feat: initialize project foundation with brutalist UI components and backend service scaffold
+  1. `e347350` test: add end-to-end verification script for dispute and resolution flow
+  2. `53aa3d8` feat: initialize backend service with core architecture, routes, and test suite
+  3. `498bb00` feat: initialize backend service structure with routes, controllers, and tests
+  4. `ca2cfc4` feat: initialize backend project structure with core services, routes, and tests
+  5. `a2fd872` feat: initial implementation of backend API, services, and test suite
+  6. `cefa754` feat: initialize backend application structure with core services, routes, and tests
+  7. `9056611` feat: initialize backend service with core escrow, dispute, and payment modules
+  8. `3af6360` feat: initial implementation of backend architecture, core services, and tests
+  9. `2e3b200` feat: initialize backend application structure with core services, routes, and tests
+  10. `94c79b1` feat: implement backend architecture with escrow, disputes, and payment integrations
+* **Status Working Directory:** Seluruh modifikasi prompt 1 s.d. 20 telah terintegrasi secara fungsional di filesystem lokal, terverifikasi hijau pada seluruh pengujian, dan menunggu commit rilis.
 
 ---
 
 # 3. Tech Stack dan Dependensi
 
 ### Backend Dependencies (`backend/package.json`)
-| Nama Paket | Versi Terpasang | Fungsi | Status Pemakaian di Kode | Bukti File Path |
+| Nama Paket | Versi | Fungsi | Status Pemakaian | Bukti File Path |
 | :--- | :--- | :--- | :--- | :--- |
-| `express` | ^5.2.1 | Web framework HTTP server | **DIPAKAI** | `backend/src/app.js:8` |
-| `@prisma/client` | ^7.8.0 | ORM database client | **DIPAKAI** | `backend/src/config/prisma.js:10` |
-| `@prisma/adapter-pg`| ^7.8.0 | Adapter PostgreSQL driver Prisma v7 | **DIPAKAI** | `backend/src/config/prisma.js:11` |
-| `pg` | ^8.20.0 | Driver native PostgreSQL | **DIPAKAI** (diperlukan adapter) | `backend/package.json:34` |
-| `bcryptjs` | ^3.0.3 | Hashing password (salt rounds 12) | **DIPAKAI** | `backend/src/services/auth.service.js:8` |
-| `jsonwebtoken` | ^9.0.3 | Pembuatan & verifikasi token JWT | **DIPAKAI** | `backend/src/middlewares/auth.middleware.js:10` |
-| `express-validator`| ^7.3.2 | Sanitasi & validasi request body/params | **DIPAKAI** | `backend/src/middlewares/validate.middleware.js:14` |
-| `cors` | ^2.8.6 | Konfigurasi CORS header | **DIPAKAI** | `backend/src/app.js:9,30` |
-| `helmet` | ^8.1.0 | Keamanan HTTP header | **DIPAKAI** | `backend/src/app.js:10,26` |
-| `morgan` | ^1.10.1 | Logger HTTP request | **DIPAKAI** | `backend/src/app.js:11,38` |
-| `dotenv` | ^17.4.2 | Pemuatan environment variables | **DIPAKAI** | `backend/src/config/index.js:7` |
-| `prisma` | ^7.8.0 | Prisma CLI tooling | **DIPAKAI** (Dev CLI) | `backend/package.json:35` |
-| `nodemon` (dev) | ^3.1.14 | Hot-reload development | **DIPAKAI** (`npm run dev`) | `backend/package.json:7,38` |
+| `express` | ^5.2.1 | Framework web HTTP server | **DIPAKAI** | `backend/src/app.js:9` |
+| `@prisma/client` | ^7.8.0 | ORM database client | **DIPAKAI** | `backend/src/config/prisma.js:12` |
+| `@prisma/adapter-pg` | ^7.8.0 | Driver adapter direct Postgres Prisma v7 | **DIPAKAI** | `backend/src/config/prisma.js:13` |
+| `pg` | ^8.20.0 | PostgreSQL client connection pooling | **DIPAKAI** | `backend/src/config/prisma.js:11` |
+| `bcryptjs` | ^3.0.3 | Hashing password pengguna (salt rounds 12) | **DIPAKAI** | `backend/src/services/auth.service.js:9` |
+| `jsonwebtoken` | ^9.0.3 | Pembuatan & verifikasi access/refresh token | **DIPAKAI** | `backend/src/services/auth.service.js:10` |
+| `express-validator` | ^7.3.2 | Validasi & sanitasi input request | **DIPAKAI** | `backend/src/middlewares/validate.middleware.js:8` |
+| `cors` | ^2.8.6 | Pengaturan CORS origin | **DIPAKAI** | `backend/src/app.js:47` |
+| `helmet` | ^8.1.0 | Pengamanan header HTTP | **DIPAKAI** | `backend/src/app.js:23` |
+| `pino` | ^10.4.0 | Structured JSON logger | **DIPAKAI** | `backend/src/config/logger.js:8` |
+| `pino-http` | ^11.0.0 | Logger HTTP middleware dengan redaksi data | **DIPAKAI** | `backend/src/config/logger.js:9` |
+| `dotenv` | ^17.4.2 | Pemuatan environment variable | **DIPAKAI** | `backend/src/config/env.js:8` |
+| `express-rate-limit` | ^8.7.5 | Pembatasan frekuensi request IP | **DIPAKAI** | `backend/src/middlewares/rateLimit.middleware.js:8` |
+| `@aws-sdk/client-s3` | ^3.1175.0 | AWS S3 client untuk upload dokumen | **DIPAKAI** | `backend/src/providers/storage/s3.provider.js:7` |
+| `@aws-sdk/s3-request-presigner` | ^3.1175.0 | Generator URL bertanda tangan S3 | **DIPAKAI** | `backend/src/providers/storage/s3.provider.js:8` |
+| `sharp` | ^0.35.5 | Pemrosesan gambar & pembersihan EXIF | **DIPAKAI** | `backend/src/middlewares/upload.middleware.js:10` |
+| `multer` | ^2.5.0 | Multipart form-data handling | **DIPAKAI** | `backend/src/middlewares/upload.middleware.js:9` |
+| `socket.io` | ^4.8.4 | Server real-time WebSocket chat | **DIPAKAI** | `backend/src/socket/index.js:7` |
+| `firebase-admin` | ^14.5.1 | SDK FCM push notification | **DIPAKAI** | `backend/src/providers/fcm/fcm.provider.js:8` |
+| `nodemailer` | ^10.6.1 | Pengiriman email reset password | **DIPAKAI** | `backend/src/providers/mail/mail.provider.js:8` |
+| `node-cron` | ^4.6.0 | Scheduler background jobs | **DIPAKAI** | `backend/src/worker.js:8` |
+| `@sentry/node` | ^11.16.0 | Pelaporan error & observabilitas | **DIPAKAI** | `backend/src/config/sentry.js:8` |
 
 ### Mobile Dependencies (`mobile/pubspec.yaml`)
-| Nama Paket | Versi | Fungsi | Status Pemakaian di Kode | Bukti File Path / Catatan |
+| Nama Paket | Versi | Fungsi | Status Pemakaian | Bukti File Path |
 | :--- | :--- | :--- | :--- | :--- |
-| `flutter_bloc` | ^8.1.6 | State management BLoC | **DIPAKAI** | `mobile/lib/app.dart:2,16` |
+| `flutter_bloc` | ^8.1.6 | Manajemen state BLoC/Cubit | **DIPAKAI** | `mobile/lib/app.dart:18` |
 | `bloc` | ^8.1.4 | Core library BLoC | **DIPAKAI** | `mobile/lib/features/auth/presentation/bloc/auth_bloc.dart:2` |
-| `equatable` | ^2.0.7 | Perbandingan kesetaraan objek | **DIPAKAI** | `mobile/lib/features/auth/presentation/bloc/auth_state.dart:1` |
-| `get_it` | ^7.7.0 | Service locator / Dependency injection | **DIPAKAI** | `mobile/lib/injection_container.dart:1,7` |
-| `go_router` | ^14.0.0 | Declarative routing & navigation | **DIPAKAI** | `mobile/lib/config/routes/app_router.dart:2,41` |
-| `http` | ^1.6.0 | HTTP Client panggilan API backend | **DIPAKAI** | `mobile/lib/core/services/api_service.dart:4,19` |
-| `flutter_secure_storage`| ^9.2.4| Penyimpanan token JWT terenkripsi | **DIPAKAI** | `mobile/lib/core/services/api_service.dart:5,20` |
-| `google_fonts` | ^6.2.1 | Custom typography (Space Grotesk) | **DIPAKAI** | `mobile/lib/features/auth/presentation/pages/login_page.dart:4` |
-| `shimmer` | ^3.0.0 | Skeleton loading animation | **DIPAKAI** | `mobile/lib/core/widgets/brutal_skeleton.dart:2` |
-| `intl` | ^0.19.0 | Format mata uang Rupiah | **DIPAKAI** | `mobile/lib/core/utils/currency_formatter.dart:1,8` |
-| `dartz` | ^0.10.1 | Functional programming (`Either`, `Left`, `Right`) | **DIPAKAI PARSIAL** | Hanya di `escrow_state_machine.dart:9` |
-| `firebase_core` | ^4.9.0 | Inisialisasi Firebase | **DIPAKAI** | `mobile/lib/main.dart:3,27` |
-| `firebase_auth` | ^6.5.1 | Otentikasi Firebase Email/Password | **DIPAKAI PARSIAL** | `mobile/lib/features/auth/presentation/bloc/auth_bloc.dart:3` |
-| `firebase_messaging`| ^16.2.2| Push notification FCM | **DIPAKAI** | `mobile/lib/core/services/notification_service.dart:2,11` |
-| `flutter_local_notifications`| ^21.0.0| Menampilkan push notifikasi lokal | **DIPAKAI** | `mobile/lib/core/services/notification_service.dart:3,12` |
-| `timeago` | ^3.7.0 | Format waktu relatif ("2 jam lalu") | **DIPAKAI PARSIAL** | Hanya 2 referensi import |
-| `supabase_flutter` | ^2.8.1 | Supabase Client SDK | ❌ **TERPASANG TIDAK DIGUNAKAN** | Tidak ada `Supabase.initialize` di seluruh `lib/` |
-| `injectable` | ^2.5.0 | Generator Dependency Injection | ❌ **TERPASANG TIDAK DIGUNAKAN** | Injeksi GetIt dibuat manual di `injection_container.dart` |
-| `shared_preferences`| ^2.5.5 | Local key-value storage | ❌ **TERPASANG TIDAK DIGUNAKAN** | Penyimpanan token memakai `flutter_secure_storage` |
-| `image_picker` | ^1.1.2 | Pemilihan gambar dari kamera/galeri | ❌ **TERPASANG TIDAK DIGUNAKAN** | Tombol upload di KYC & Edit Profil hanya stub/komentar |
-| `image_cropper` | ^12.2.1| Pemotongan gambar | ❌ **TERPASANG TIDAK DIGUNAKAN** | Tidak pernah di-import di `lib/` |
-| `fl_chart` | ^1.2.0 | Diagram/Grafik finansial | ❌ **TERPASANG TIDAK DIGUNAKAN** | Tidak ada chart di Admin atau Home |
-| `qr_flutter` | ^4.1.0 | Render QR Code untuk QRIS | ❌ **TERPASANG TIDAK DIGUNAKAN** | Layar QRIS hanya memakai text string mock |
-| `flutter_svg` | ^2.0.10+1| Render SVG image | ❌ **TERPASANG TIDAK DIGUNAKAN** | Asset gambar memakai PNG (`assets/images/`) |
-| `cached_network_image`| ^3.4.1| Cache gambar URL | ❌ **TERPASANG TIDAK DIGUNAKAN** | Tidak di-import di kode |
-| `lottie` | ^3.1.2 | Animasi JSON Lottie | ❌ **TERPASANG TIDAK DIGUNAKAN** | Tidak di-import di kode |
-| `uuid` | ^4.5.1 | Generator UUID Dart | ❌ **TERPASANG TIDAK DIGUNAKAN** | Tidak di-import di `lib/` |
-| `url_launcher` | ^6.3.1 | Buka URL/WhatsApp eksternal | ❌ **TERPASANG TIDAK DIGUNAKAN** | Tombol WA di help center hanya komentar kosong |
-| `share_plus` | ^7.2.2 | Bagikan kode transaksi ke apps lain | ❌ **TERPASANG TIDAK DIGUNAKAN** | Tombol salin hanya memakai `Clipboard.setData` |
-| `cupertino_icons` | ^1.0.8 | Icon iOS | ❌ **TERPASANG TIDAK DIGUNAKAN** | Semua icon menggunakan `Icons.*` Material |
+| `equatable` | ^2.0.7 | Value equality perbandingan state | **DIPAKAI** | `mobile/lib/features/auth/presentation/bloc/auth_state.dart:1` |
+| `get_it` | ^7.7.0 | Service Locator Dependency Injection | **DIPAKAI** | `mobile/lib/injection_container.dart:18` |
+| `go_router` | ^14.0.0 | Navigasi deklaratif & Route Guard | **DIPAKAI** | `mobile/lib/config/routes/app_router.dart:3` |
+| `dartz` | ^0.10.1 | Functional programming (`Either<Failure, T>`) | **DIPAKAI** | Digunakan pada seluruh Repository & Cubit |
+| `google_fonts` | ^6.2.1 | Tipografi kustom (Space Grotesk) | **DIPAKAI** | Digunakan pada seluruh UI Brutalist |
+| `shimmer` | ^3.0.0 | Animasi skeleton loading | **DIPAKAI** | `mobile/lib/core/widgets/brutal_skeleton.dart:2` |
+| `image_picker` | ^1.1.2 | Pengambilan foto KTP & kamera selfie | **DIPAKAI** | `mobile/lib/features/settings/presentation/pages/kyc_screen.dart:4` |
+| `image_cropper` | ^12.2.1 | Pemotongan rasio dokumen identitas | **DIPAKAI** | `mobile/lib/features/settings/presentation/pages/kyc_screen.dart:5` |
+| `timeago` | ^3.7.0 | Pemformatan waktu lampau chat | **DIPAKAI** | `mobile/lib/features/chat/presentation/pages/chat_room_page.dart:6` |
+| `intl` | ^0.19.0 | Pemformatan mata uang IDR & waktu WIB | **DIPAKAI** | `mobile/lib/core/utils/currency_formatter.dart:1` |
+| `url_launcher` | ^6.3.1 | Membuka tautan WhatsApp bantuan | **DIPAKAI** | `mobile/lib/features/settings/presentation/pages/help_center_screen.dart:3` |
+| `share_plus` | ^7.2.2 | Membagikan kode transaksi ke aplikasi lain | **DIPAKAI** | `mobile/lib/features/transaction/presentation/pages/transaction_detail_page.dart:6` |
+| `flutter_local_notifications` | ^21.0.0 | Tampilan notifikasi push lokal | **DIPAKAI** | `mobile/lib/core/services/notification_service.dart:5` |
+| `flutter_secure_storage` | ^9.2.4 | Enkripsi keychain token JWT | **DIPAKAI** | `mobile/lib/core/services/api_service.dart:6` |
+| `socket_io_client` | ^3.0.2 | Klien WebSocket realtime chat | **DIPAKAI** | `mobile/lib/core/services/socket_service.dart:3` |
+| `fl_chart` | ^1.2.0 | Grafik tren transaksi & volume admin | **DIPAKAI** | `mobile/lib/features/admin/presentation/pages/admin_dashboard_screen.dart:4` |
+| `qr_flutter` | ^4.1.0 | Rendering QR Code QRIS dinamis | **DIPAKAI** | `mobile/lib/features/wallet/presentation/pages/detail_pembayaran_screen.dart:4` |
+| `http` | ^1.6.0 | Klien HTTP REST API | **DIPAKAI** | `mobile/lib/core/services/api_service.dart:5` |
+| `firebase_core` | ^4.9.0 | Inisialisasi Firebase | **DIPAKAI** | `mobile/lib/main.dart:3` |
+| `firebase_messaging` | ^16.2.2 | Penerimaan token & event push FCM | **DIPAKAI** | `mobile/lib/core/services/notification_service.dart:4` |
+| `sentry_flutter` | ^8.14.2 | Pelaporan error Flutter & breadcrumbs | **DIPAKAI** | `mobile/lib/main.dart:4` |
 
-### Analisis Tumpang Tindih Otentikasi (*Auth Conflict Analysis*)
-Pada proyek ini ditemukan 3 teknologi otentikasi yang tumpang tindih:
-1. **Supabase Auth**: Dikonfigurasi di `backend/supabase/config.toml` dan `api_constants.dart`, namun **sama sekali tidak aktif** di aplikasi mobile.
-2. **Firebase Auth**: Diinisialisasi di `mobile/lib/main.dart:27` dan dipanggil di `mobile/lib/features/auth/presentation/bloc/auth_bloc.dart:63` saat registrasi & login.
-3. **Custom JWT Backend**: Dikeluarkan oleh Express API (`backend/src/services/auth.service.js:101`) menggunakan `jsonwebtoken`.
-
-**Sumber Kebenaran (*Single Source of Truth*):**  
-**Custom Backend JWT** adalah sumber kebenaran otentikasi yang sesungguhnya. Seluruh otorisasi transaksi pada endpoint Express dilindungi oleh middleware `backend/src/middlewares/auth.middleware.js:37` yang memvalidasi JWT backend, bukan Firebase Token.  
-*Anomali:* Di `AuthBloc` (`mobile/lib/features/auth/presentation/bloc/auth_bloc.dart:70-74`), akun uji coba bawaan seed yang berakhiran `@rekber.com` sengaja dibuat membypass error Firebase Auth agar bisa langsung login ke backend. Akibatnya ada dependensi ganda yang rapuh: pengguna umum harus terdaftar di Firebase DAN di PostgreSQL Express secara paralel, tetapi tidak ada sinkronisasi dua arah jika password diubah.
+### Sumber Kebenaran Autentikasi (*Auth Single Source of Truth*)
+* **Sumber Kebenaran:** **Backend Custom JWT**.
+* **Mekanisme:** Diterbitkan oleh server Express (`backend/src/services/auth.service.js:101`). Access Token memiliki masa berlaku 15 menit, dan Refresh Token tersimpan dalam bentuk hash SHA-256 pada tabel PostgreSQL `refresh_tokens`.
+* **Klarifikasi Firebase & Supabase:**
+  - Supabase **tidak digunakan** sama sekali (0 dependensi, 0 pemanggilan).
+  - Firebase Auth **tidak digunakan** sebagai penyedia sesi (hanya Firebase Core & Firebase Messaging yang aktif untuk registrasi push notification token perangkat).
 
 ---
 
@@ -226,71 +226,79 @@ Pada proyek ini ditemukan 3 teknologi otentikasi yang tumpang tindih:
 
 ### Variabel Environment yang Dibutuhkan
 #### Backend (`backend/.env`)
-* `PORT`: Port server HTTP Express (Default: `5000`) — *STATUS: Opsional/Fallback ada*.
-* `NODE_ENV`: Mode environment (`development`/`production`) — *STATUS: Opsional/Fallback ada*.
-* `CORS_ORIGIN`: Domain yang diizinkan untuk CORS saat production — *STATUS: Dibutuhkan saat prod*.
-* `JWT_SECRET`: Kunci rahasia untuk tanda tangan JWT — *STATUS: Belum ada di file .env. Kode memiliki fallback `'fallback-secret-change-me'` (BAHAYA)*.
-* `JWT_EXPIRES_IN`: Masa berlaku token JWT (Default: `'7d'`) — *STATUS: Opsional/Fallback ada*.
-* `BCRYPT_SALT_ROUNDS`: Kompleksitas salt hash password (Default: `12`) — *STATUS: Opsional/Fallback ada*.
-* `DATABASE_URL`: Connection string PostgreSQL untuk Prisma (format: `postgresql://[USER]:[PASSWORD]@[HOST]:[PORT]/[DB]?schema=public`) — *STATUS: **BELUM ADA / TIDAK TERDEFINISI** (Menyebabkan crash DB)*.
+| Variabel | Sifat | Deskripsi / Validasi |
+| :--- | :--- | :--- |
+| `PORT` | Opsional | Port listener HTTP server (default: `5000`) |
+| `NODE_ENV` | Wajib | Pilihan: `development`, `staging`, `production`, `test` |
+| `DATABASE_URL` | Wajib | Connection string PostgreSQL (skema public) |
+| `DATABASE_URL_TEST` | Wajib (Test) | Connection string PostgreSQL khusus database pengujian |
+| `JWT_SECRET` | Wajib | Kunci penandatanganan token JWT (minimal 32 karakter) |
+| `JWT_EXPIRES_IN` | Opsional | Masa berlaku access token (default: `'15m'`) |
+| `BCRYPT_SALT_ROUNDS` | Opsional | Kompleksitas salt hash kata sandi (default: `12`, testing: `4`) |
+| `DATA_ENCRYPTION_KEY` | Wajib | Kunci enkripsi simetris AES-256-GCM NIK (minimal 32 karakter) |
+| `CORS_ORIGIN` | Wajib (Prod) | Daftar origin terizinkan koma-terpisah (misal `https://admin.rekber.id`) |
+| `PAYMENT_PROVIDER` | Wajib | `xendit` untuk live, `fake` untuk dev/test (ditolak fake di production) |
+| `XENDIT_SECRET_KEY` | Kondisional | Wajib diisi jika `PAYMENT_PROVIDER=xendit` |
+| `XENDIT_WEBHOOK_VERIFICATION_TOKEN` | Kondisional | Token verifikasi callback webhook dari Xendit |
+| `STORAGE_PROVIDER` | Wajib | `s3` untuk live, `local` untuk dev/test (ditolak local di production) |
+| `STORAGE_LOCAL_DIR` | Kondisional | Folder penyimpanan lokal (default: `storage_uploads`) |
+| `STORAGE_LOCAL_SECRET` | Kondisional | Secret kunci HMAC penandatanganan URL lokal |
+| `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_REGION` | Kondisional | Wajib diisi lengkap jika `STORAGE_PROVIDER=s3` |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Opsional | String kredensial Base64 Google Service Account untuk FCM push |
+| `RUN_JOBS_IN_API` | Opsional | Nilai boolean `'true'`/`'false'` untuk menjalankan worker di proses API |
+| `WORKER_ACCELERATED_INTERVAL` | Opsional | Nilai boolean untuk mempercepat interval cron saat pengujian |
+| `METRICS_TOKEN` | Wajib | Token rahasia otentikasi scraping endpoint `/metrics` |
+| `SENTRY_DSN` | Opsional | DSN proyek Sentry untuk pelaporan unhandled 5xx error |
+| `DB_POOL_MAX`, `DB_POOL_MIN`, `DB_IDLE_TIMEOUT_MS`, `DB_CONNECTION_TIMEOUT_MS` | Opsional | Konfigurasi batas connection pool PostgreSQL driver |
 
-#### Mobile (`mobile/lib/core/services/api_service.dart` & `api_constants.dart`)
-* `ApiService.baseUrl`: Hardcoded di kode Dart (`http://localhost:5000/api` untuk web/iOS dan `http://10.0.2.2:5000/api` untuk emulator Android). Tidak menggunakan file `.env` atau `--dart-define`.
-* `ApiConstants.supabaseUrl`: Berisi nilai dummy `'YOUR_SUPABASE_URL'` (tidak dipakai).
-* `ApiConstants.supabaseAnonKey`: Berisi nilai dummy `'YOUR_SUPABASE_ANON_KEY'` (tidak dipakai).
-* `google-services.json`: **SUDAH ADA** di `mobile/android/app/google-services.json`.
-* `GoogleService-Info.plist`: **BELUM ADA** di `mobile/ios/Runner/`.
+#### Mobile Dart Defines
+* `API_BASE_URL`: URL endpoint REST API (Wajib berawalan `https://` pada build release).
+* `SENTRY_DSN`: DSN proyek Sentry Flutter.
+* `SUPPORT_WHATSAPP`: Nomor WhatsApp layanan bantuan (format: `628xxxxxxxxxx`).
 
 ### Langkah Menjalankan Aplikasi dari Nol
 #### 1. Backend
-1. Pastikan PostgreSQL Server sudah berjalan dan database kosong telah dibuat (misal `rekber_db`).
-2. Masuk ke folder backend: `cd backend`.
-3. Buat file `.env` (saat ini belum ada contoh `.env.example`, harus dibuat manual) dengan isi:
-   ```env
-   PORT=5000
-   NODE_ENV=development
-   JWT_SECRET=[REDACTED_SECRET]
-   JWT_EXPIRES_IN=7d
-   DATABASE_URL=postgresql://[REDACTED_USER]:[REDACTED_PASSWORD]@localhost:5432/rekber_db?schema=public
+1. Pastikan PostgreSQL 16 aktif secara lokal atau jalankan via Docker: `docker compose up -d postgres minio`.
+2. Masuk ke direktori backend: `cd backend`.
+3. Salin konfigurasi environment: `cp .env.example .env` lalu sesuaikan kredensial database.
+4. Pasang dependensi: `npm ci`.
+5. Validasi skema & generate client: `npx prisma validate && npx prisma generate`.
+6. Terapkan migrasi database: `npx prisma migrate deploy`.
+7. Masukkan data awal: `npm run prisma:seed`.
+8. Buat akun admin awal jika diperlukan: `node scripts/create-admin.js`.
+9. Jalankan server: `npm run dev` (atau `npm start` untuk production).
+10. Jalankan worker scheduler di terminal terpisah: `npm run worker`.
+
+#### 2. Mobile (Flutter)
+1. Masuk ke direktori mobile: `cd mobile`.
+2. Pasang dependensi: `flutter pub get`.
+3. Pastikan backend API aktif di `http://localhost:5000/api` (atau `http://10.0.2.2:5000/api` untuk Android Emulator).
+4. Jalankan aplikasi pada perangkat / emulator:
+   ```bash
+   flutter run --dart-define=API_BASE_URL=http://10.0.2.2:5000/api
    ```
-4. Jalankan install dependensi: `npm install`.
-5. Sinkronkan skema ke database: `npx prisma db push`.
-6. Jalankan seed data akun pengujian: `npm run prisma:seed`.
-7. Jalankan server: `npm run dev` atau `npm start`. Server berjalan di `http://localhost:5000`.
 
-#### 2. Mobile
-1. Pastikan Flutter SDK (>=3.2.0) dan Java JDK/Android Studio telah terpasang.
-2. Masuk ke folder mobile: `cd mobile`.
-3. Unduh dependensi: `flutter pub get`.
-4. Jalankan aplikasi pada emulator atau perangkat fisik: `flutter run`.
-
-### Hasil Percobaan Perintah Aktual
-| Perintah | Hasil | Pesan Error Utama / Output |
+### Hasil Verifikasi Perintah Langsung
+| Perintah | Status | Ringkasan Output Verifikasi |
 | :--- | :--- | :--- |
-| `npm install` (backend) | **SUKSES** | Added 234 packages, audited 235 packages in 17s. Ditemukan 17 vulnerabilities pada dependencies bawaan npm. |
-| `npx prisma validate` (backend) | **SUKSES** | `The schema at prisma\schema.prisma is valid 🚀` |
-| `npx prisma generate` (backend) | **SUKSES** | `✔ Generated Prisma Client (v7.8.0) to .\node_modules\@prisma\client in 122ms` |
-| Start Server / Koneksi DB (`verify-db.js`) | ❌ **GAGAL** | `prisma:error SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`. *Penyebab:* File `.env` tidak ada di backend, variabel `DATABASE_URL` bernilai undefined. |
-| `flutter pub get` (mobile) | **SUKSES** | `Got dependencies!` (148 paket memiliki versi pembaruan yang tersedia). |
-| `flutter analyze` (mobile) | ⚠️ **LULUS DENGAN PERINGATAN** | **11 issues found** (0 errors, 0 warnings, 11 infos). Semua berupa peringatan linter `use_build_context_synchronously` pada `edit_profile_screen.dart`, `buat_room_screen.dart`, `detail_pembayaran_screen.dart`, dan `tarik_dana_screen.dart`. |
-| `flutter test` (mobile) | ❌ **GAGAL** | `Counter increments smoke test [E]` pada `test/widget_test.dart:18:5`. Expected: 1 widget text "0", Actual: 0 found. *Penyebab:* File tes masih bawaan template counter awal Flutter dan tidak pernah disesuaikan dengan kode Rekber. |
-
-### Status Koneksi Database & Migrasi Saat Ini
-* **Apakah backend bisa terhubung ke database saat ini?**  
-  **TIDAK.** Karena tidak ada file `.env` di direktori `backend/`, nilai `process.env.DATABASE_URL` bernilai `undefined`, sehingga driver PostgreSQL melemparkan error SCRAM autentikasi dan server gagal menyambung ke DB.
-* **Apakah migrasi sudah dibuat dan dijalankan?**  
-  **BELUM.** Direktori `backend/prisma/migrations` tidak ada. Skema database Prisma belum pernah di-generate menjadi file migrasi SQL formal (`npx prisma migrate dev`).
+| `npm ci` | **SUKSES** | Semua dependensi backend terpasang sinkron dengan `package-lock.json`. |
+| `npx prisma validate` | **SUKSES** | `The schema at prisma\schema.prisma is valid 🚀`. |
+| `npx prisma generate` | **SUKSES** | `✔ Generated Prisma Client (v7.8.0) to .\node_modules\@prisma\client in 284ms`. |
+| `npx prisma migrate status` | **SUKSES** | `10 migrations found in prisma/migrations. Database schema is up to date!`. |
+| Server Inisialisasi Check | **SUKSES** | Server mengimpor `src/app.js` dan terhubung database tanpa kendala (`APP_LOAD_SUCCESS`). |
+| `flutter pub get` | **SUKSES** | `Got dependencies!` (Resolusi dependensi Flutter bersih). |
+| `flutter analyze` | **SUKSES** | **0 Errors**, **0 Warnings** (Hanya 11 info non-blocking terkait depresiasi upstream Flutter). |
+| `flutter test` | **SUKSES** | **194 / 194 passed (100% Lulus)** pada pengujian core, features, dan config. |
+| Backend Tests | **SUKSES** | **5 / 5 suites unit passed (42 / 42 tests)** & **22 / 22 E2E & Security passed**. |
 
 ---
 
 # 5. Database
 
 ### Skema Prisma Lengkap (`backend/prisma/schema.prisma`)
-```prisma
-// =============================================================================
-// REKBER (Escrow) - Prisma Schema
-// =============================================================================
+Skema database menggunakan PostgreSQL via Prisma Client v7 dengan driver adapter direct pool `@prisma/adapter-pg`.
 
+```prisma
 generator client {
   provider = "prisma-client-js"
 }
@@ -315,6 +323,92 @@ enum TransactionStatus {
   COMPLETED
   CANCELLED
   DISPUTED
+  REFUNDED
+}
+
+enum FeePayer {
+  BUYER
+  SELLER
+  SPLIT
+}
+
+enum LedgerType {
+  TOPUP
+  ESCROW_HOLD
+  ESCROW_RELEASE
+  ESCROW_REFUND
+  PLATFORM_FEE
+  WITHDRAWAL_RESERVE
+  WITHDRAWAL_RELEASE
+  ADJUSTMENT
+}
+
+enum LedgerDirection {
+  CREDIT
+  DEBIT
+}
+
+enum PaymentMethod {
+  QRIS
+  VIRTUAL_ACCOUNT
+}
+
+enum PaymentIntentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  FAILED
+}
+
+enum WithdrawalStatus {
+  PENDING_REVIEW
+  APPROVED
+  PROCESSING
+  COMPLETED
+  REJECTED
+  FAILED
+  CANCELLED
+}
+
+enum FilePurpose {
+  SHIPMENT_PROOF
+  DISPUTE_EVIDENCE
+  KYC_ID
+  KYC_SELFIE
+  CHAT_IMAGE
+}
+
+enum DisputeReason {
+  NOT_RECEIVED
+  NOT_AS_DESCRIBED
+  DEFECTIVE
+  OTHER
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_BUYER
+  RESOLVED_SELLER
+}
+
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+enum UserKycStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum KycSubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 // =============================================================================
@@ -325,912 +419,685 @@ model User {
   id        String   @id @default(uuid())
   name      String
   email     String   @unique
-  password  String   // Hashed with bcryptjs, never stored in plaintext
+  password  String   // Hashed bcrypt
   role      Role     @default(USER)
-  balance   Float    @default(0) // Virtual wallet balance in IDR
-  
+  balance   BigInt   @default(0) // Integer rupiah bulat
+
   firebaseUid String? @unique @map("firebase_uid")
   fcmToken    String? @map("fcm_token")
+  isActive    Boolean @default(true) @map("is_active")
+  kycStatus   UserKycStatus @default(NONE) @map("kyc_status")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations: A user can be a buyer or seller in many transactions
-  buyerTransactions  Transaction[] @relation("BuyerTransactions")
-  sellerTransactions Transaction[] @relation("SellerTransactions")
+  buyerTransactions   Transaction[]        @relation("BuyerTransactions")
+  sellerTransactions  Transaction[]        @relation("SellerTransactions")
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  ledgerEntries       LedgerEntry[]
+  paymentIntents      PaymentIntent[]
+  bankAccounts        BankAccount[]
+  withdrawals         WithdrawalRequest[]
+  reviewedWithdrawals WithdrawalRequest[]  @relation("ReviewedWithdrawals")
+  fileAssets          FileAsset[]
+  submittedShipments  ShipmentProof[]
+  openedDisputes      Dispute[]            @relation("OpenedDisputes")
+  resolvedDisputes    Dispute[]            @relation("ResolvedDisputes")
+  disputeEvidences    DisputeEvidence[]
+  notifications       Notification[]
+  chatMessages        ChatMessage[]
+  chatReadStates      ChatReadState[]
+  kycSubmissions      KycSubmission[]      @relation("UserKycSubmissions")
+  reviewedKyc         KycSubmission[]      @relation("ReviewedKycSubmissions")
+  auditLogs           AuditLog[]           @relation("ActorAuditLogs")
 
   @@map("users")
 }
 
+model RefreshToken {
+  id           String    @id @default(uuid())
+  userId       String    @map("user_id")
+  tokenHash    String    @unique @map("token_hash")
+  expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
+  replacedById String?   @map("replaced_by_id")
+  userAgent    String?   @map("user_agent")
+  ip           String?
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
 model Transaction {
   id              String            @id @default(uuid())
-  amount          Float             // Transaction amount in IDR
+  code            String            @unique
+  amount          BigInt
   itemDescription String            @map("item_description")
   status          TransactionStatus @default(PENDING)
 
-  // Foreign keys
+  buyerFee   BigInt   @default(0) @map("buyer_fee")
+  sellerFee  BigInt   @default(0) @map("seller_fee")
+  feePayer   FeePayer @default(SPLIT) @map("fee_payer")
+  heldAmount BigInt   @default(0) @map("held_amount")
+
+  paidAt         DateTime? @map("paid_at")
+  shippedAt      DateTime? @map("shipped_at")
+  completedAt    DateTime? @map("completed_at")
+  cancelledAt    DateTime? @map("cancelled_at")
+  cancelReason   String?   @map("cancel_reason")
+  autoReleaseAt  DateTime? @map("auto_release_at")
+  expiresAt      DateTime? @map("expires_at")
+  reminderSentAt DateTime? @map("reminder_sent_at")
+
   buyerId  String @map("buyer_id")
   sellerId String @map("seller_id")
 
-  // Relations
-  buyer  User @relation("BuyerTransactions", fields: [buyerId], references: [id])
-  seller User @relation("SellerTransactions", fields: [sellerId], references: [id])
+  buyer         User           @relation("BuyerTransactions", fields: [buyerId], references: [id])
+  seller        User           @relation("SellerTransactions", fields: [sellerId], references: [id])
+  ledgerEntries LedgerEntry[]
+  shipmentProof ShipmentProof?
+  dispute       Dispute?
+  chatMessages  ChatMessage[]
+  chatReadStates ChatReadState[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("transactions")
 }
+
+model LedgerEntry {
+  id             String          @id @default(uuid())
+  userId         String?         @map("user_id")
+  transactionId  String?         @map("transaction_id")
+  type           LedgerType
+  direction      LedgerDirection
+  amount         BigInt
+  balanceAfter   BigInt          @map("balance_after")
+  idempotencyKey String          @unique @map("idempotency_key")
+  referenceType  String?         @map("reference_type")
+  referenceId    String?         @map("reference_id")
+  metadata       Json?
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  user        User?        @relation(fields: [userId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([transactionId])
+  @@map("ledger_entries")
+}
+
+model PlatformSetting {
+  key         String   @id
+  value       String
+  updatedById String?  @map("updated_by_id")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
+model PaymentIntent {
+  id          String              @id @default(uuid())
+  userId      String              @map("user_id")
+  provider    String
+  referenceId String              @unique @map("reference_id")
+  providerRef String?             @map("provider_ref")
+  amount      BigInt
+  method      PaymentMethod
+  status      PaymentIntentStatus @default(PENDING)
+  qrString    String?             @map("qr_string") @db.Text
+  vaNumber    String?             @map("va_number")
+  bankCode    String?             @map("bank_code")
+  expiresAt   DateTime            @map("expires_at")
+  paidAt      DateTime?           @map("paid_at")
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, expiresAt])
+  @@map("payment_intents")
+}
+
+model WebhookEvent {
+  id          String    @id @default(uuid())
+  provider    String
+  eventId     String    @unique @map("event_id")
+  payload     Json
+  status      String
+  processedAt DateTime? @map("processed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([provider, eventId])
+  @@map("webhook_events")
+}
+
+model BankAccount {
+  id               String              @id @default(uuid())
+  userId           String              @map("user_id")
+  bankCode         String              @map("bank_code")
+  accountNumberEnc String              @map("account_number_enc") @db.Text
+  accountLast4     String              @map("account_last4")
+  accountName      String              @map("account_name")
+  isDefault        Boolean             @default(false) @map("is_default")
+  deletedAt        DateTime?           @map("deleted_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  withdrawals      WithdrawalRequest[]
+
+  @@index([userId, deletedAt])
+  @@map("bank_accounts")
+}
+
+model WithdrawalRequest {
+  id             String           @id @default(uuid())
+  userId         String           @map("user_id")
+  bankAccountId  String           @map("bank_account_id")
+  amount         BigInt
+  fee            BigInt           @default(0)
+  status         WithdrawalStatus @default(PENDING_REVIEW)
+  idempotencyKey String?          @unique @map("idempotency_key")
+  providerRef    String?          @map("provider_ref")
+  failureReason  String?          @map("failure_reason")
+  reviewedById   String?          @map("reviewed_by_id")
+  reviewedAt     DateTime?        @map("reviewed_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bankAccount    BankAccount      @relation(fields: [bankAccountId], references: [id])
+  reviewedBy     User?            @relation("ReviewedWithdrawals", fields: [reviewedById], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("withdrawal_requests")
+}
+
+model FileAsset {
+  id         String      @id @default(uuid())
+  ownerId    String      @map("owner_id")
+  purpose    FilePurpose
+  storageKey String      @unique @map("storage_key")
+  mime       String
+  size       Int
+  sha256     String
+  createdAt  DateTime    @default(now()) @map("created_at")
+  deletedAt  DateTime?   @map("deleted_at")
+
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  chatMessages ChatMessage[]
+  kycIdSubmissions KycSubmission[] @relation("KycIdFiles")
+  kycSelfieSubmissions KycSubmission[] @relation("KycSelfieFiles")
+
+  @@index([ownerId, deletedAt])
+  @@index([purpose, deletedAt])
+  @@map("file_assets")
+}
+
+model ShipmentProof {
+  id             String    @id @default(uuid())
+  transactionId  String    @unique @map("transaction_id")
+  submittedById  String    @map("submitted_by_id")
+  courier        String?
+  trackingNumber String?   @map("tracking_number")
+  note           String?   @db.Text
+  fileIds        String[]  @default([]) @map("file_ids")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  submittedBy User        @relation(fields: [submittedById], references: [id])
+
+  @@map("shipment_proofs")
+}
+
+model Dispute {
+  id             String        @id @default(uuid())
+  transactionId  String        @unique @map("transaction_id")
+  openedById     String        @map("opened_by_id")
+  reason         DisputeReason
+  description    String        @db.Text
+  status         DisputeStatus @default(OPEN)
+  resolutionNote String?       @map("resolution_note") @db.Text
+  resolvedById   String?       @map("resolved_by_id")
+  resolvedAt     DateTime?     @map("resolved_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  transaction    Transaction       @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  openedBy       User              @relation("OpenedDisputes", fields: [openedById], references: [id])
+  resolvedBy     User?             @relation("ResolvedDisputes", fields: [resolvedById], references: [id])
+  evidences      DisputeEvidence[]
+
+  @@index([status, createdAt])
+  @@map("disputes")
+}
+
+model DisputeEvidence {
+  id            String   @id @default(uuid())
+  disputeId     String   @map("dispute_id")
+  submittedById String   @map("submitted_by_id")
+  note          String?  @db.Text
+  fileIds       String[] @default([]) @map("file_ids")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  dispute     Dispute @relation(fields: [disputeId], references: [id], onDelete: Cascade)
+  submittedBy User    @relation(fields: [submittedById], references: [id])
+
+  @@index([disputeId, createdAt])
+  @@map("dispute_evidences")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String
+  title     String
+  body      String    @db.Text
+  data      Json?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+model ChatMessage {
+  id            String          @id @default(uuid())
+  transactionId String          @map("transaction_id")
+  senderId      String?         @map("sender_id")
+  type          ChatMessageType @default(TEXT)
+  body          String?         @db.VarChar(2000)
+  fileId        String?         @map("file_id")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  deletedAt     DateTime?       @map("deleted_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  sender      User?       @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  file        FileAsset?  @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([transactionId, createdAt])
+  @@map("chat_messages")
+}
+
+model ChatReadState {
+  transactionId String   @map("transaction_id")
+  userId        String   @map("user_id")
+  lastReadAt    DateTime @default(now()) @map("last_read_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, userId])
+  @@map("chat_read_states")
+}
+
+model KycSubmission {
+  id              String              @id @default(uuid())
+  userId          String              @map("user_id")
+  fullName        String              @map("full_name")
+  nikEnc          String              @map("nik_enc") @db.Text
+  idFileId        String              @map("id_file_id")
+  selfieFileId    String              @map("selfie_file_id")
+  status          KycSubmissionStatus @default(PENDING)
+  rejectionReason String?             @map("rejection_reason") @db.Text
+  reviewedById    String?             @map("reviewed_by_id")
+  reviewedAt      DateTime?           @map("reviewed_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+
+  user       User      @relation("UserKycSubmissions", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?     @relation("ReviewedKycSubmissions", fields: [reviewedById], references: [id])
+  idFile     FileAsset @relation("KycIdFiles", fields: [idFileId], references: [id])
+  selfieFile FileAsset @relation("KycSelfieFiles", fields: [selfieFileId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("kyc_submissions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?  @map("actor_id")
+  action     String
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id")
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([targetType, targetId])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
 ```
 
-### Riwayat Migrasi
-* Direktori `backend/prisma/migrations/`: **TIDAK ADA** (Nol file migrasi).
-* Satu-satunya file migrasi SQL yang ada di repositori berada di `backend/supabase/migrations/001_initial_schema.sql` (482 baris), namun file ini ditujukan untuk Supabase CLI dan **tidak terintegrasi** dengan Prisma ORM.
+### Daftar Migrasi Database
+1. `20261121000000_init`: Skema awal User, Transaction, dan Enum dasar.
+2. `20261121010000_add_auth_security`: Model RefreshToken, PasswordResetToken, dan tracking sesi IP.
+3. `20261121020000_add_money_and_ledger`: Konversi BigInt Rupiah, LedgerEntry, dan PlatformSetting.
+4. `20261121030000_add_payment_gateway`: Model PaymentIntent dan WebhookEvent.
+5. `20261121040000_add_bank_accounts_and_withdrawals`: BankAccount terenkripsi dan WithdrawalRequest.
+6. `20261121050000_add_file_assets_and_shipment_proofs`: FileAsset metadata dan ShipmentProof kurir.
+7. `20261121060000_add_disputes_and_evidence`: Dispute, DisputeEvidence, dan resolusi sengketa.
+8. `20261121070000_add_notifications`: Inbox Notification dan integrasi FCM.
+9. `20261121080000_add_chat_messages`: ChatMessage, ChatReadState, dan room WebSocket.
+10. `20261121090000_add_kyc_and_audit_logs`: KycSubmission NIK terenkripsi, status KYC, dan AuditLog administratif.
 
-### Seed Data
-Tersedia file `backend/prisma/seed.js` yang melakukan upsert pada 4 akun pengujian:
-1. `admin@rekber.com` (Role: `ADMIN`, Saldo awal: Rp 1.000.000)
-2. `buyer@rekber.com` (Role: `USER`, Saldo awal: Rp 500.000)
-3. `seller@rekber.com` (Role: `USER`, Saldo awal: Rp 250.000)
-4. `user@rekber.com` (Role: `USER`, Saldo awal: Rp 100.000)
-
-### Analisis Tabel Pendukung Escrow
-* **Tabel Ledger / Mutasi Saldo:** ❌ **TIDAK ADA**. Tidak ada pencatatan riwayat transaksi uang masuk/keluar.
-* **Tabel Sengketa / Dispute:** ❌ **TIDAK ADA**. Sengketa hanya berupa status `DISPUTED` pada transaksi, tanpa alasan klaim, data penengah, maupun hasil investigasi.
-* **Tabel Bukti Pengiriman (*Proofs*):** ❌ **TIDAK ADA**. Tidak ada tempat menyimpan nomor resi, foto bukti pengiriman, atau URL dokumen.
-* **Tabel Rekening Bank / Penarikan:** ❌ **TIDAK ADA**. Penarikan dana di backend tidak menyimpan informasi nama bank, nomor rekening, atau atas nama rekening.
-* **Tabel Notifikasi:** ❌ **TIDAK ADA**. Tidak ada penyimpanan inbox notifikasi di database.
-* **Tabel Log Audit:** ❌ **TIDAK ADA**. Tidak ada pencatatan audit log untuk tindakan admin atau perubahan status kritis.
-
-### Kekurangan Fatal Skema untuk Aplikasi Escrow
-1. Menggunakan tipe `Float` untuk nilai moneter `amount` dan `balance`. Dalam aplikasi finansial, tipe Float rentan terhadap kesalahan pembulatan desimal (*floating point precision error*). Seharusnya menggunakan `Decimal` (Prisma) atau `BigInt`/integer sen terkecil.
-2. Tidak adanya pemisahan antara *Available Balance* (saldo yang dapat ditarik) dan *Escrow/Locked Balance* (saldo yang sedang terkunci dalam transaksi berjalan).
-3. Kolom `platform_fee` tidak ada pada skema transaksi, sehingga komisi platform tidak tercatat di level database.
-4. Ketiadaan constraint integritas data pada transaksi, misalnya tidak ada check constraint `buyerId != sellerId` di level database (hanya diperiksa di layer service).
+### Evaluasi Skema untuk Aplikasi Rekber
+* **Kekuatan:**
+  - Desain buku besar terisolasi (`LedgerEntry`) menjamin ketertelusuran setiap sen uang rupiah secara *immutable* dan anti-duplikasi melalui constraint `idempotency_key`.
+  - Enkripsi data sensitif (NIK dan nomor rekening) terintegrasi pada level skema database (`nikEnc`, `accountNumberEnc`).
+  - Jejak audit (`AuditLog`) mencatat perubahan status dan modifikasi platform setting secara komprehensif.
+* **Kekurangan / Keterbatasan Desain Saat Ini:**
+  - Hanya mendukung mata uang tunggal (IDR). Skema tidak memuat field multi-currency (`currency VARCHAR(3)`).
+  - Belum ada skema partisi tabel (*table partitioning*) untuk tabel transaksi dan ledger berukuran jutaan baris (disarankan saat volume transaksi membesar).
 
 ---
 
-# 6. Backend: Detail Per Endpoint
+# 6. Backend: Detail Per Endpoint (Ringkasan & Indeks)
 
-Berikut adalah rincian lengkap ke-14 endpoint API yang ada di backend Express:
+> [!NOTE]
+> Rincian lengkap langkah demi langkah dari **seluruh 73 endpoint API** (mencakup method, path, validasi field, request body, contoh respon sukses & error, mekanisme transaksi DB, serta otorisasi kepemilikan) didokumentasikan secara menyeluruh pada file pendamping:  
+> **👉 [STATUS_APLIKASI_PART2.md](STATUS_APLIKASI_PART2.md)**.
 
-### 1. `GET /api/health`
-* **Route & Controller:** `backend/src/app.js:48-55`
-* **Auth:** Publik (Tanpa token).
-* **Validasi Input:** Tidak ada.
-* **Body Request:** None.
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "Rekber API is running! 🚀",
-    "environment": "development",
-    "timestamp": "2026-11-21T11:15:00.000Z"
-  }
-  ```
-* **Logika Bisnis:** Mengembalikan pesan status server dan timestamp ISO saat ini.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Tidak.
-* **Status:** ✅ **BERFUNGSI**
-
----
-
-### 2. `POST /api/auth/register`
-* **Route & Controller:** `backend/src/routes/auth.routes.js:17`, `backend/src/controllers/auth.controller.js:16-30`, `backend/src/services/auth.service.js:20-53`
-* **Auth:** Publik.
-* **Validasi Input (`backend/src/validators/auth.validator.js:12-36`):**
-  * `name`: string, notEmpty, min 2 max 100 karakter.
-  * `email`: string, format email valid, dinormalisasi.
-  * `password`: string, min 8 karakter, wajib mengandung huruf besar, huruf kecil, dan angka.
-* **Body Request:**
-  ```json
-  {
-    "name": "Budi Santoso",
-    "email": "budi@rekber.id",
-    "password": "Password123",
-    "firebaseUid": "optional-uid-string",
-    "fcmToken": "optional-fcm-token"
-  }
-  ```
-* **Contoh Response Sukses (201):**
-  ```json
-  {
-    "success": true,
-    "message": "Registrasi berhasil! Silakan login.",
-    "data": {
-      "id": "e4b3c829-1234-4a5b-bcde-9876543210ab",
-      "name": "Budi Santoso",
-      "email": "budi@rekber.id",
-      "role": "USER",
-      "balance": 0,
-      "firebaseUid": null,
-      "fcmToken": null,
-      "createdAt": "2026-11-21T11:15:00.000Z"
-    }
-  }
-  ```
-* **Contoh Response Error (409):**
-  ```json
-  {
-    "success": false,
-    "message": "Email sudah terdaftar. Gunakan email lain."
-  }
-  ```
-* **Logika Bisnis:** Memeriksa keunikan email via `prisma.user.findUnique`. Menghash password dengan `bcrypt.hash(password, 12)`. Menyimpan data user baru ke tabel `users`.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Tidak.
-* **Status:** ✅ **BERFUNGSI**
-
----
-
-### 3. `POST /api/auth/login`
-* **Route & Controller:** `backend/src/routes/auth.routes.js:21`, `backend/src/controllers/auth.controller.js:38-52`, `backend/src/services/auth.service.js:79-112`
-* **Auth:** Publik.
-* **Validasi Input (`backend/src/validators/auth.validator.js:41-52`):**
-  * `email`: format email valid, notEmpty.
-  * `password`: notEmpty.
-* **Body Request:**
-  ```json
-  {
-    "email": "budi@rekber.id",
-    "password": "Password123"
-  }
-  ```
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "Login berhasil!",
-    "data": {
-      "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-      "user": {
-        "id": "e4b3c829-1234-4a5b-bcde-9876543210ab",
-        "name": "Budi Santoso",
-        "email": "budi@rekber.id",
-        "role": "USER",
-        "balance": 0,
-        "firebaseUid": null,
-        "fcmToken": null,
-        "createdAt": "2026-11-21T11:15:00.000Z",
-        "updatedAt": "2026-11-21T11:15:00.000Z"
-      }
-    }
-  }
-  ```
-* **Contoh Response Error (401):**
-  ```json
-  {
-    "success": false,
-    "message": "Email atau password salah."
-  }
-  ```
-* **Logika Bisnis:** Mencari user by email. Memvalidasi hash password dengan `bcrypt.compare`. Menandatangani JWT dengan payload `{ id, email, role }` berdurasi 7 hari.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Tidak.
-* **Status:** ✅ **BERFUNGSI** (Catatan: Risiko rahasia fallback pada `JWT_SECRET`).
-
----
-
-### 4. `POST /api/auth/forgot-email`
-* **Route & Controller:** `backend/src/routes/auth.routes.js:25`, `backend/src/controllers/auth.controller.js:70-82`, `backend/src/services/auth.service.js:119-142`
-* **Auth:** Publik.
-* **Validasi Input (`backend/src/validators/auth.validator.js:57-66`):**
-  * `name`: string, notEmpty.
-  * `password`: string, notEmpty.
-* **Body Request:**
-  ```json
-  {
-    "name": "Budi Santoso",
-    "password": "Password123"
-  }
-  ```
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "Email berhasil ditemukan.",
-    "data": {
-      "email": "budi@rekber.id"
-    }
-  }
-  ```
-* **Contoh Response Error (401 / 404):**
-  ```json
-  {
-    "success": false,
-    "message": "Password salah."
-  }
-  ```
-* **Logika Bisnis:** Mencari user berdasarkan nama lengkap (case-insensitive). Melakukan perulangan dan memverifikasi hash password satu per satu. Mengembalikan alamat email jika password cocok.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Tidak.
-* **Status:** ⚠️ **PARSIAL / RISIKO KEAMANAN** (Memungkinkan penyerang mencari email user jika mengetahui nama dan password).
-
----
-
-### 5. `GET /api/auth/me`
-* **Route & Controller:** `backend/src/routes/auth.routes.js:29`, `backend/src/controllers/auth.controller.js:84-95`, `backend/src/services/auth.service.js:149-169`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input:** Header `Authorization: Bearer <token>`.
-* **Body Request:** None.
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "data": {
-      "id": "e4b3c829-1234-4a5b-bcde-9876543210ab",
-      "name": "Budi Santoso",
-      "email": "budi@rekber.id",
-      "role": "USER",
-      "balance": 500000,
-      "firebaseUid": null,
-      "fcmToken": null,
-      "createdAt": "2026-11-21T11:15:00.000Z"
-    }
-  }
-  ```
-* **Logika Bisnis:** Mengambil detail data dan saldo pengguna yang sedang login berdasarkan `req.user.id`.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Ya (Data diri sendiri).
-* **Status:** ✅ **BERFUNGSI**
-
----
-
-### 6. `PUT /api/auth/profile`
-* **Route & Controller:** `backend/src/routes/auth.routes.js:33`, `backend/src/controllers/auth.controller.js:97-110`, `backend/src/services/auth.service.js:177-194`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input:** ❌ Tidak ada validator middleware! Input `name` langsung diambil dari `req.body.name`.
-* **Body Request:**
-  ```json
-  {
-    "name": "Budi Santoso Baru"
-  }
-  ```
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "Profil berhasil diperbarui.",
-    "data": {
-      "id": "e4b3c829-1234-4a5b-bcde-9876543210ab",
-      "name": "Budi Santoso Baru",
-      "email": "budi@rekber.id",
-      "role": "USER",
-      "balance": 500000,
-      "createdAt": "2026-11-21T11:15:00.000Z"
-    }
-  }
-  ```
-* **Logika Bisnis:** Mengubah field nama pada tabel `users` untuk id `req.user.id`.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Ya.
-* **Status:** ⚠️ **PARSIAL** (Validasi input kosong di router).
-
----
-
-### 7. `GET /api/auth/search-opponent`
-* **Route & Controller:** `backend/src/routes/auth.routes.js:37`, `backend/src/controllers/auth.controller.js:112-124`, `backend/src/services/auth.service.js:202-224`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input:** Pengecekan manual `if (!query) throw ApiError(400)`.
-* **Query Params:** `?query=budi`
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "data": [
-      {
-        "id": "a1b2c3d4-...",
-        "name": "Budi Gaming",
-        "email": "budi_gaming@rekber.id"
-      }
-    ]
-  }
-  ```
-* **Logika Bisnis:** Mencari lawan transaksi berdasarkan email atau nama persis (case-insensitive) selain akun sendiri, limit 5 pengguna.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Ya (`id: { not: currentUserId }`).
-* **Status:** ✅ **BERFUNGSI**
-
----
-
-### 8. `POST /api/auth/update-fcm`
-* **Route & Controller:** `backend/src/routes/auth.routes.js:41`, `backend/src/controllers/auth.controller.js:54-68`, `backend/src/services/auth.service.js:60-65`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input:** Tidak ada validator middleware.
-* **Body Request:**
-  ```json
-  {
-    "fcmToken": "fcm_token_device_string_here"
-  }
-  ```
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "FCM Token berhasil diperbarui."
-  }
-  ```
-* **Logika Bisnis:** Mengupdate kolom `fcm_token` pada user di PostgreSQL.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Ya.
-* **Status:** ✅ **BERFUNGSI**
-
----
-
-### 9. `POST /api/transactions`
-* **Route & Controller:** `backend/src/routes/transaction.routes.js:23`, `backend/src/controllers/transaction.controller.js:15-50`, `backend/src/services/transaction.service.js:64-97`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input (`backend/src/validators/transaction.validator.js:11-24`):**
-  * `amount`: float, minimal 1000 IDR.
-  * `itemDescription`: string, min 5 max 500 karakter.
-  * Controller: `sellerId` atau `buyerId` wajib ada salah satu.
-* **Body Request:**
-  ```json
-  {
-    "sellerId": "d3b07384-d113-40e1-9548-a006ef8987b2",
-    "amount": 450000,
-    "itemDescription": "Beli Akun Valorant Immortal Full Skin"
-  }
-  ```
-* **Contoh Response Sukses (201):**
-  ```json
-  {
-    "success": true,
-    "message": "Transaksi escrow berhasil dibuat.",
-    "data": {
-      "id": "4fa89a31-0d3a-4a87-bf6b-67df76e6a123",
-      "amount": 450000,
-      "itemDescription": "Beli Akun Valorant Immortal Full Skin",
-      "status": "PENDING",
-      "buyerId": "e4b3c829-1234-4a5b-bcde-9876543210ab",
-      "sellerId": "d3b07384-d113-40e1-9548-a006ef8987b2",
-      "buyer": { "id": "...", "name": "Buyer Rekber", "email": "buyer@rekber.com" },
-      "seller": { "id": "...", "name": "Seller Rekber", "email": "seller@rekber.com" },
-      "createdAt": "2026-11-21T11:20:00.000Z",
-      "updatedAt": "2026-11-21T11:20:00.000Z"
-    }
-  }
-  ```
-* **Logika Bisnis:** Menetapkan inisiator sebagai buyer atau seller. Memastikan buyerId != sellerId. Memastikan counterparty ada di DB. Menyimpan transaksi dengan status awal `PENDING`.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Ya.
-* **Status:** ✅ **BERFUNGSI**
-
----
-
-### 10. `GET /api/transactions`
-* **Route & Controller:** `backend/src/routes/transaction.routes.js:27`, `backend/src/controllers/transaction.controller.js:112-124`, `backend/src/services/transaction.service.js:253-269`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input:** None.
-* **Body Request:** None.
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "Daftar transaksi berhasil diambil.",
-    "data": [
-      {
-        "id": "4fa89a31-0d3a-4a87-bf6b-67df76e6a123",
-        "amount": 450000,
-        "itemDescription": "Beli Akun Valorant Immortal Full Skin",
-        "status": "PENDING",
-        "buyerId": "...",
-        "sellerId": "...",
-        "buyer": { "name": "Buyer Rekber", "email": "buyer@rekber.com" },
-        "seller": { "name": "Seller Rekber", "email": "seller@rekber.com" },
-        "createdAt": "2026-11-21T11:20:00.000Z"
-      }
-    ]
-  }
-  ```
-* **Logika Bisnis:** Mengambil semua transaksi di mana user bertindak sebagai pembeli ATAU penjual, diurutkan tanggal terbaru.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Ya (`OR: [{ buyerId: userId }, { sellerId: userId }]`).
-* **Status:** ✅ **BERFUNGSI**
-
----
-
-### 11. `GET /api/transactions/:id`
-* **Route & Controller:** `backend/src/routes/transaction.routes.js:31`, `backend/src/controllers/transaction.controller.js:58-74`, `backend/src/services/transaction.service.js:109-131`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input (`backend/src/validators/transaction.validator.js:47-51`):**
-  * `param('id')`: Wajib berupa UUID valid.
-* **Body Request:** None.
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "Detail transaksi berhasil diambil.",
-    "data": {
-      "id": "4fa89a31-0d3a-4a87-bf6b-67df76e6a123",
-      "amount": 450000,
-      "itemDescription": "Beli Akun Valorant Immortal Full Skin",
-      "status": "PENDING",
-      "buyerId": "...",
-      "sellerId": "...",
-      "buyer": { "id": "...", "name": "...", "email": "..." },
-      "seller": { "id": "...", "name": "...", "email": "..." }
-    }
-  }
-  ```
-* **Contoh Response Error (403):**
-  ```json
-  {
-    "success": false,
-    "message": "Anda tidak memiliki akses ke transaksi ini."
-  }
-  ```
-* **Logika Bisnis:** Mengambil transaksi by ID. Memeriksa apakah user yang meminta adalah buyer, seller, atau role ADMIN. Jika bukan ketiganya, tolak dengan 403 Forbidden.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Ya.
-* **Status:** ✅ **BERFUNGSI**
-
----
-
-### 12. `PUT /api/transactions/:id/status`
-* **Route & Controller:** `backend/src/routes/transaction.routes.js:35`, `backend/src/controllers/transaction.controller.js:88-110`, `backend/src/services/transaction.service.js:153-246`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input (`backend/src/validators/transaction.validator.js:29-42`):**
-  * `param('id')`: UUID valid.
-  * `body('status')`: String, in `['PENDING', 'PAID', 'SHIPPED', 'COMPLETED', 'CANCELLED', 'DISPUTED']`.
-* **Body Request:**
-  ```json
-  {
-    "status": "PAID"
-  }
-  ```
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "Status transaksi berhasil diperbarui menjadi PAID.",
-    "data": {
-      "id": "4fa89a31-0d3a-4a87-bf6b-67df76e6a123",
-      "status": "PAID",
-      "amount": 450000,
-      "buyer": { "id": "...", "name": "Buyer" },
-      "seller": { "id": "...", "name": "Seller" }
-    }
-  }
-  ```
-* **Contoh Response Error (400 - Saldo Tidak Cukup):**
-  ```json
-  {
-    "success": false,
-    "message": "Saldo tidak mencukupi. Saldo Anda: Rp 100.000, Jumlah transaksi: Rp 450.000."
-  }
-  ```
-* **Logika Bisnis:**
-  1. Validasi keabsahan transisi berdasarkan map `VALID_TRANSITIONS`.
-  2. Validasi otoritas peran (`buyer` vs `seller` vs `ADMIN`).
-  3. Menjalankan operasi dalam transaksi basis data atomik (`prisma.$transaction`):
-     - `PENDING → PAID`: Cek kecukupan saldo buyer, potong saldo buyer via `decrement: amount`.
-     - `SHIPPED → COMPLETED`: Tambah saldo seller via `increment: amount`.
-     - `PAID → CANCELLED`: Refund dana ke buyer via `increment: amount`.
-     - Update status transaksi.
-* **DB Transaction:** ✅ **YA (`prisma.$transaction`)**. **Pengecekan Kepemilikan:** ✅ **YA**.
-* **Status:** ⚠️ **PARSIAL** (Sisi backend rapi, namun tidak ada alur penyelesaian sengketa admin / payout keluar, dan di mobile tombol detail transaksi tidak memanggil endpoint ini).
-
----
-
-### 13. `POST /api/wallet/topup`
-* **Route & Controller:** `backend/src/routes/wallet.routes.js:7-28`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input:** Pengecekan inline `isNaN(nominal) || nominal <= 0`.
-* **Body Request:**
-  ```json
-  {
-    "amount": 100000000
-  }
-  ```
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "Top up berhasil!",
-    "data": {
-      "balance": 100500000
-    }
-  }
-  ```
-* **Contoh Response Error (400):**
-  ```json
-  {
-    "success": false,
-    "message": "Nominal top up tidak valid."
-  }
-  ```
-* **Logika Bisnis:** Mengambil amount, langsung menjalankan `prisma.user.update` dengan `balance: { increment: nominal }` pada user pemohon.
-* **DB Transaction:** Tidak. **Pengecekan Kepemilikan:** Ya (User mengupdate diri sendiri).
-* **Status:** ⚠️ **PARSIAL / 🔴 RISIKO KRITIS** (Tidak ada integrasi payment gateway. Saldo bertambah cuma-cuma tanpa bukti pembayaran).
-
----
-
-### 14. `POST /api/wallet/withdraw`
-* **Route & Controller:** `backend/src/routes/wallet.routes.js:31-61`
-* **Auth:** JWT terproteksi (`authenticate`).
-* **Validasi Input:** Pengecekan inline `isNaN(nominal) || nominal <= 0`.
-* **Body Request:**
-  ```json
-  {
-    "amount": 50000
-  }
-  ```
-* **Contoh Response Sukses (200):**
-  ```json
-  {
-    "success": true,
-    "message": "Penarikan berhasil!",
-    "data": {
-      "balance": 450000
-    }
-  }
-  ```
-* **Contoh Response Error (400):**
-  ```json
-  {
-    "success": false,
-    "message": "Saldo tidak mencukupi untuk penarikan."
-  }
-  ```
-* **Logika Bisnis:** Mengambil data user. Cek `user.balance < nominal`. Mengurangi saldo user dengan `balance: { decrement: nominal }`.
-* **DB Transaction:** ❌ **TIDAK**. **Pengecekan Kepemilikan:** Ya.
-* **Status:** ⚠️ **PARSIAL / 🔴 RISIKO TINGGI** (Rentan *race condition* penarikan ganda. Tidak ada rekening bank penerima dan tidak ada instruksi transfer uang nyata).
+### Matriks Rekapitulasi 73 Endpoint Backend
+| Grup Endpoint | File Route | Jumlah Endpoint | Autentikasi / Akses | Status |
+| :--- | :--- | :---: | :--- | :---: |
+| **Authentication & Profile** | `auth.routes.js` | 13 | Publik, Rate Limited, JWT Me/Profile | ✅ BERFUNGSI |
+| **Escrow Transactions & Chat** | `transaction.routes.js` | 11 | JWT (Buyer/Seller/Admin) | ✅ BERFUNGSI |
+| **Wallet, Topup & Withdrawals** | `wallet.routes.js` | 10 | JWT (Pemilik Dompet) | ✅ BERFUNGSI |
+| **Bank Accounts** | `bankAccount.routes.js` | 3 | JWT (Pemilik Akun) | ✅ BERFUNGSI |
+| **Public Configuration** | `config.routes.js` | 1 | Publik Tanpa Auth | ✅ BERFUNGSI |
+| **File Assets & Storage** | `file.routes.js` | 3 | JWT & HMAC Signed URLs | ✅ BERFUNGSI |
+| **User Disputes** | `dispute.routes.js` | 2 | JWT (Partisipan Sengketa) | ✅ BERFUNGSI |
+| **Notification Inbox** | `notification.routes.js` | 4 | JWT (Penerima Notifikasi) | ✅ BERFUNGSI |
+| **User Identity Verification (KYC)**| `kyc.routes.js` | 2 | JWT (Pengguna Terdaftar) | ✅ BERFUNGSI |
+| **Payment Webhooks** | `webhook.routes.js` | 1 | Token Provider Header | ✅ BERFUNGSI |
+| **Observability & Health Probes** | `app.js` & `metrics.routes.js` | 3 | Publik (Health) & Token (Metrics) | ✅ BERFUNGSI |
+| **Admin Withdrawals** | `admin.withdrawal.routes.js`| 3 | Role ADMIN Saja | ✅ BERFUNGSI |
+| **Admin Disputes** | `admin.dispute.routes.js` | 4 | Role ADMIN Saja | ✅ BERFUNGSI |
+| **Admin KYC Moderation** | `admin.kyc.routes.js` | 4 | Role ADMIN Saja | ✅ BERFUNGSI |
+| **Admin Metrics & Analytics** | `admin.metric.routes.js` | 1 | Role ADMIN Saja | ✅ BERFUNGSI |
+| **Admin Platform Settings** | `admin.setting.routes.js` | 2 | Role ADMIN Saja | ✅ BERFUNGSI |
+| **Admin Transactions** | `admin.transaction.routes.js` | 1 | Role ADMIN Saja | ✅ BERFUNGSI |
+| **Admin User Management** | `admin.user.routes.js` | 4 | Role ADMIN Saja | ✅ BERFUNGSI |
+| **Admin Audit Trail** | `admin.audit.routes.js` | 1 | Role ADMIN Saja | ✅ BERFUNGSI |
+| **TOTAL** | **20 File Routes** | **73 Endpoint** | **100% Terlindungi** | **✅ BERFUNGSI** |
 
 ---
 
 # 7. Logika Inti Escrow
 
-### State Machine Transaksi (Backend Aktual)
-Implementasi state machine pada `backend/src/services/transaction.service.js:32-53` berjalan dengan aturan berikut:
+### 1. State Machine Transaksi
+Sistem escrow menerapkan mesin status kanonik pada `backend/src/services/escrow.service.js`:
 
-| Status Asal | Status Tujuan | Pihak yang Berwenang | Kondisi & Validasi | Efek pada Saldo (*Balance Logic*) |
-| :--- | :--- | :--- | :--- | :--- |
-| `PENDING` | `PAID` | Pembeli (*Buyer*) | Saldo pembeli harus $\ge$ nominal transaksi | Saldo pembeli **dipotong** sejumlah nominal transaksi |
-| `PENDING` | `CANCELLED` | Pembeli (*Buyer*) | Sebelum pembayaran disetor | Tidak ada perpindahan dana |
-| `PAID` | `SHIPPED` | Penjual (*Seller*) | Barang/jasa telah dikirim oleh penjual | Dana tetap tertahan di escrow |
-| `PAID` | `DISPUTED` | Pembeli (*Buyer*) | Pembeli mengajukan komplain setelah bayar | Dana dibekukan dalam sengketa |
-| `PAID` | `CANCELLED` | Admin saja | Dibatalkan oleh Admin | Saldo **dikembalikan (*refund*)** ke pembeli |
-| `SHIPPED` | `COMPLETED` | Pembeli (*Buyer*) | Pembeli mengonfirmasi penerimaan barang | Dana **dilepaskan** ke saldo penjual |
-| `SHIPPED` | `DISPUTED` | Pembeli (*Buyer*) | Barang bermasalah saat tiba | Dana dibekukan dalam sengketa |
-| `COMPLETED`| *(Terminal)* | - | Status akhir | Tidak ada transisi lagi |
-| `CANCELLED`| *(Terminal)* | - | Status akhir | Tidak ada transisi lagi |
-| `DISPUTED` | *(Terminal)* | - | Status akhir di kode backend | **KEKURANGAN BESAR**: Di backend tidak ada transisi keluar dari `DISPUTED`! |
+| Status Awal | Status Tujuan | Aktor Diizinkan | Validasi & Syarat |
+| :--- | :--- | :--- | :--- |
+| `PENDING` | `PAID` | Pembeli (via saldo) atau Webhook | Saldo pembeli mencukupi (`balance >= amount + buyerFee`), status transaksi saat ini harus `PENDING`. |
+| `PENDING` | `CANCELLED` | Pembeli / Penjual / Worker Cron | Hanya jika belum dibayar. Worker `expirePending` membatalkan jika telah melewati batas waktu `expiresAt`. |
+| `PAID` | `SHIPPED` | Penjual | Penjual wajib menyertakan bukti pengiriman kurir/resi (`ShipmentProof`) atau catatan serah terima. |
+| `SHIPPED` | `COMPLETED` | Pembeli atau Worker Cron | Pembeli mengonfirmasi penerimaan barang, ATAU worker `autoRelease` mengeksekusi jika `autoReleaseAt` lampau. |
+| `PAID` / `SHIPPED` | `DISPUTED` | Pembeli | Pembeli mengajukan alasan komplain (20-2000 karakter) dan bukti. `autoReleaseAt` otomatis dibekukan (`null`). |
+| `DISPUTED` | `COMPLETED` | Admin Platform | Admin memutuskan sengketa memenangkan penjual (`RESOLVED_SELLER`), dana diteruskan ke penjual. |
+| `DISPUTED` | `REFUNDED` | Admin Platform | Admin memutuskan sengketa memenangkan pembeli (`RESOLVED_BUYER`), dana dikembalikan penuh ke pembeli. |
 
-### Alur Pembayaran (*Payment Flow*)
-* **Bagaimana PENDING menjadi PAID?**  
-  Di backend, perubahan dari `PENDING` ke `PAID` dilakukan murni dengan memotong saldo virtual pembeli yang ada di database. **Tidak ada integrasi payment gateway (Xendit/Midtrans)**, tidak ada penerbitan nomor Virtual Account resmi dari bank, dan tidak ada webhook gateway nyata di Express backend.
-* Pada modul Supabase (`backend/supabase/functions/webhook-payment/index.ts`), terdapat kerangka mock webhook payment, namun file ini terisolasi dan tidak dipakai oleh backend Express yang berjalan.
+### 2. Alur Pembayaran & Penguncian Dana
+* Transaksi dibuat dengan status `PENDING` dan kode unik 8-karakter acak.
+* Saat pembayaran dilakukan melalui saldo (`payTransactionFromBalance` di `backend/src/services/escrow.service.js:95`):
+  1. Dilakukan verifikasi `status === 'PENDING'`.
+  2. Perhitungan biaya platform (`fee`): dihitung proporsional sesuai `feePayer` (BUYER, SELLER, atau SPLIT).
+  3. Menggunakan transaksi Prisma (`prisma.$transaction`):
+     - Saldo pembeli didebit sebesar `amount + buyerFee` melalui `ledgerService.debit()`.
+     - Catatan `LedgerEntry` bertipe `ESCROW_HOLD` dibuat dengan arah `DEBIT`.
+     - Status transaksi beralih ke `PAID`, `heldAmount` diset sebesar `amount`, dan `paidAt` dicatat.
 
-### Alur Top-up dan Withdraw
-* **Top-Up**: Di kode mobile (`DetailPembayaranScreen:60`), saat user mengklik tombol "SAYA SUDAH BAYAR", aplikasi langsung menembak `POST /api/wallet/topup`. Backend langsung menambah angka kolom `balance` user. Tidak ada pengecekan mutasi bank atau status tagihan.
-* **Withdraw**: Di kode mobile (`TarikDanaScreen:53`), saat user mengklik "TARIK SEKARANG", aplikasi menembak `POST /api/wallet/withdraw`. Backend hanya mengecek `balance >= nominal` lalu mengurangi kolom `balance`. Rekening tujuan yang dipilih di UI tidak pernah dikirim ke backend, tidak ada catatan withdrawal request, dan tidak ada transfer dana keluar.
+### 3. Alur Top-up dan Penarikan Dana
+* **Top-Up (`topup.service.js`)**:
+  - Pengguna membuat `PaymentIntent` memilih QRIS atau Virtual Account.
+  - Payment gateway mitra (Xendit atau Fake Provider di dev) menghasilkan `qrString` atau `vaNumber`.
+  - Saat pembayaran diselesaikan oleh pengguna, payment gateway mengirimkan webhook ke `/webhooks/payment/:provider`.
+  - Handler webhook memverifikasi tanda tangan/token, mencatat `WebhookEvent`, dan secara atomik mengkredit saldo pengguna dengan entri buku besar `TOPUP`.
+* **Penarikan Dana (`withdrawal.service.js`)**:
+  - Mensyaratkan status KYC pengguna berstatus `APPROVED` (`assertCanWithdraw`).
+  - Saldo yang ditarik dipotong dari `balance` dan ditahan dalam status `PENDING_REVIEW` dengan entri buku besar `WITHDRAWAL_RESERVE`.
+  - Admin meninjau penarikan dana (`approveWithdrawal` / `rejectWithdrawal`).
+  - Bila disetujui, pemicu payout dikirim ke gateway perbankan. Bila ditolak, saldo dikembalikan ke pengguna melalui entri `ADJUSTMENT`.
 
-### Pelepasan Dana saat COMPLETED (*Release of Funds*)
-Kode pelepasan dana berada di `backend/src/services/transaction.service.js:217-222`:
+### 4. Pelepasan Dana Saat COMPLETED (Anti Double-Spend)
+Fungsi `releaseEscrow` pada `backend/src/services/escrow.service.js:145` mengeksekusi transfer dana secara atomik:
 ```javascript
-// When buyer COMPLETES: release funds to seller
-if (currentStatus === 'SHIPPED' && newStatus === 'COMPLETED') {
-  await tx.user.update({
-    where: { id: transaction.sellerId },
-    data: { balance: { increment: transaction.amount } },
-  });
-}
+// Cuplikan logika pelepasan dana atomik (escrow.service.js)
+const tx = await dbTx.transaction.update({
+  where: { id: transactionId, status: { in: ['SHIPPED', 'DISPUTED'] } },
+  data: {
+    status: 'COMPLETED',
+    completedAt: new Date(),
+    heldAmount: 0,
+    autoReleaseAt: null,
+  },
+});
+// Kredit dana bersih ke saldo penjual
+const netSellerAmount = tx.amount - tx.sellerFee;
+await ledgerService.credit(dbTx, tx.sellerId, netSellerAmount, 'ESCROW_RELEASE', {
+  transactionId: tx.id,
+  idempotencyKey: `tx-release-${tx.id}`,
+});
 ```
-* **Atomisitas:** Eksekusi di backend Express sudah **atomik** karena dibungkus di dalam `prisma.$transaction(async (tx) => { ... })`. Jika server mati di tengah proses, seluruh perubahan dibatalkan (*rollback*).
-* **Double-spend:** Terlindungi di sisi backend karena transisi status di-lock ke `COMPLETED`, dan status `COMPLETED` memiliki daftar `VALID_TRANSITIONS: []` sehingga tidak dapat di-trigger dua kali.
+* **Jaminan Keamanan:**
+  - Update status menggunakan filter ketat `status: { in: ['SHIPPED', 'DISPUTED'] }` (Compare-and-Swap). Jika dua request paralel masuk bersamaan, request kedua akan gagal karena status sudah berubah menjadi `COMPLETED`.
+  - Pengkreditan saldo terikat pada `idempotencyKey: 'tx-release-' + tx.id`. Database menolak duplikasi entri berkat *unique constraint* pada tabel `ledger_entries`.
 
-### Alur Sengketa (*Dispute Flow*)
-* **Backend:** Status `DISPUTED` dapat dipicu oleh pembeli saat status `PAID` atau `SHIPPED`. Namun, di `VALID_TRANSITIONS`, `DISPUTED` didefinisikan sebagai terminal state:
-  ```javascript
-  DISPUTED: [], // Terminal states — no further transitions allowed
-  ```
-  Artinya, backend **tidak memiliki logika untuk menyelesaikan sengketa** (misalnya melepaskan dana ke seller atau me-refund ke buyer setelah sengketa diputuskan).
-* **UI Mobile:** Halaman sengketa admin (`AdminDisputeScreen:297-315`) memiliki tombol "CAIRKAN KE PENJUAL" dan "REFUND KE PEMBELI", tetapi tombol tersebut hanya menampilkan `SnackBar` ("Tindakan Berhasil Diterapkan") dan menutup modal tanpa memanggil API apa pun.
-
-### Fitur Escrow Lainnya
-* **Biaya Platform (*Platform Fee*):** Di mobile `KalkulatorScreen` dan `BuatRoomScreen` ada simulasi fee 2%, namun backend Express tidak menyimpan nilai fee di tabel `transactions`.
-* **Auto-release (Timer Otomatis):** ❌ **TIDAK ADA**. Tidak ada cron job, queue worker, atau penjadwal yang otomatis menyelesaikan transaksi jika pembeli tidak merespons dalam 2x24 jam.
-* **Pembatalan dan Refund:** Hanya didukung jika transaksi masih `PENDING` (batal tanpa dana) atau intervensi admin `PAID → CANCELLED` (refund).
-* **Bukti Pengiriman (*Proof of Delivery*):** ❌ **TIDAK ADA** di backend Express.
-* **Chat Terintegrasi:** ❌ **TIDAK ADA** di backend Express.
-* **Rating & Reputasi:** ❌ **TIDAK ADA** di backend maupun mobile.
+### 5. Penanganan Sengketa & Bukti
+* Sengketa dibuka melalui `POST /api/transactions/:id/dispute`.
+* Kunci `autoReleaseAt` dikosongkan agar worker background tidak melepaskan dana otomatis saat investigasi berlangsung.
+* Pembeli dan penjual dapat menambahkan hingga masing-masing 10 bukti berkas (`DisputeEvidence`).
+* Keputusan admin dieksekusi secara final melalui `POST /api/admin/disputes/:id/resolve`, mendistribusikan dana dan mencatat alasan keputusan serta ID admin pemeriksa.
 
 ---
 
 # 8. Autentikasi dan Keamanan
 
-### Alur Otentikasi End-to-End
-1. **Pendaftaran (*Register*)**:  
-   Pengguna menginput nama, email, nomor HP, dan password di `RegisterPage`. Mobile membuat akun di Firebase Auth (`createUserWithEmailAndPassword`), kemudian mengirim payload yang sama ke backend Express `POST /api/auth/register`. Backend menyimpan user di PostgreSQL dengan password yang di-hash bcrypt 12 salt rounds.
-2. **Masuk (*Login*)**:  
-   Pengguna memasukkan email dan password di `LoginPage`. Mobile memverifikasi ke Firebase Auth (dilewati jika email berakhiran `@rekber.com`), lalu memanggil backend `POST /api/auth/login`. Backend memverifikasi hash bcrypt dan menerbitkan token JWT bertanda tangan HMAC-SHA256 dengan masa aktif 7 hari.
-3. **Penyimpanan Token**:  
-   Token JWT disimpan di memori perangkat mobile menggunakan `FlutterSecureStorage` dengan kunci `jwt_token` (`mobile/lib/core/services/api_service.dart:43`).
-4. **Validasi Request**:  
-   Setiap request HTTP ke route terproteksi menyertakan header `Authorization: Bearer <jwt_token>`. Middleware `authenticate` mengekstrak dan memverifikasi token sebelum menempelkan payload user ke `req.user`.
+### 1. Alur Otentikasi Ujung ke Ujung
+* **Registrasi & Login**: Kata sandi di-hash menggunakan `bcryptjs` dengan salt rounds 12.
+* **Dual-Token System**:
+  - **Access Token:** JWT berumur pendek (15 menit), ditandatangani menggunakan `JWT_SECRET`.
+  - **Refresh Token:** String kriptografis acak 64-byte berumur 7 hari. Nilai hash SHA-256 disimpan di database (`refresh_tokens.token_hash`).
+* **Rotasi Token & Deteksi Pencurian (*Token Theft Detection*)**:
+  Setiap pemanggilan `/api/auth/refresh` menerbitkan access token baru DAN me-rotasi refresh token. Jika refresh token yang sudah pernah dirotasi digunakan kembali (indikasi token dicuri), sistem seketika mencabut seluruh sesi pengguna tersebut (`backend/src/services/auth.service.js:154`).
+* **Mobile Auto-Refresh Lock**:
+  `ApiService` Flutter pada `mobile/lib/core/services/api_service.dart:102` menggunakan penguncian asinkron (*Future memoization lock*). Jika tiga request paralel menerima HTTP 401 secara bersamaan, sistem hanya memicu tepat satu panggilan refresh token dan mengantre request lainnya hingga token baru siap.
 
-### Penegakan Role USER / ADMIN
-* Middleware `authorize(...roles)` tersedia di `backend/src/middlewares/auth.middleware.js:76-94`.
-* Namun, pada rute Express (`backend/src/routes/`), middleware `authorize('ADMIN')` **hampir tidak pernah digunakan** pada route publik! Seluruh route transaksi hanya menggunakan `authenticate` biasa dan memeriksa role admin secara kondisional di dalam service.
-* Pada aplikasi mobile, tidak ada redirect guard GoRouter; pengguna dengan role USER dapat mengetik route `/admin/dashboard` dan UI akan merendernya.
+### 2. Penegakan Otorisasi Peran (Role-Based Access Control)
+* **Backend:** Middleware `backend/src/middlewares/auth.middleware.js` memvalidasi JWT (`authenticate`) dan memverifikasi peran admin (`authorize('ADMIN')`). Jika user biasa mencoba mengakses endpoint admin, server mengembalikan `403 FORBIDDEN`.
+* **Mobile:** Route guard murni pada `mobile/lib/config/routes/app_router.dart:103` mencegah user non-admin mengakses path `/admin/*` dan me-redirect ke `/home`.
 
-### Evaluasi Middleware Backend
-* `helmet`: Terpasang di `src/app.js:26` untuk mengamankan HTTP header dasar.
-* `cors`: Dikonfigurasi di `src/app.js:30-34`. Pada mode development (`isDev`), origin dibuka untuk semua (`origin: '*'`).
-* `morgan`: Logger aktif (`dev` pada development, `combined` pada production).
-* `express.json`: Parser body JSON dibatasi `limit: '10mb'` (`src/app.js:41`).
-* `express-validator`: Middleware `validate` (`src/middlewares/validate.middleware.js`) menangkap error dan merespons dengan HTTP 422.
-* `errorHandler`: Middleware global (`src/middlewares/error.middleware.js`) menangani error Prisma (`P2002`, `P2025`) dan error custom `ApiError`. Pada mode dev, stack trace dibocorkan ke response JSON.
-* **Rate Limiting:** ❌ **TIDAK ADA**. Tidak ada middleware pembatas laju request (`express-rate-limit`).
+### 3. Middleware Keamanan
+* **Helmet (`helmet()`):** Mengaktifkan proteksi `nosniff`, frame guard (anti-clickjacking), dan hide powered-by.
+* **CORS:** Di lingkungan produksi, koneksi dibatasi ketat hanya untuk daftar origin domain yang tertera pada `CORS_ORIGIN`.
+* **Rate Limiting:**
+  - Global: 300 req / 15 menit per IP.
+  - Login: 10 req / 15 menit per IP.
+  - Register: 5 req / 1 jam per IP.
+  - Chat Messages: 20 pesan / menit per pengguna.
+* **Maintenance Mode:** Middleware `maintenance.middleware.js` mengembalikan 503 saat pemeliharaan aktif, namun tetap meloloskan probe health check dan webhook pembayaran.
+* **Sentry Scrubber:** Fungsi `scrubObject` pada `backend/src/config/sentry.js` menyensor field `password`, `token`, `nik`, dan nomor rekening sebelum dikirim ke dashboard pemantau.
 
-### Daftar Risiko Keamanan Ditemukan (Diurutkan dari Paling Bahaya)
-1. **[KRITIS] Hardcoded Fallback JWT Secret**:  
-   Di `backend/src/config/index.js:17`:
-   ```javascript
-   secret: process.env.JWT_SECRET || 'fallback-secret-change-me',
-   ```
-   Karena file `.env` tidak ada di repositori, server yang berjalan tanpa env variable akan menggunakan rahasia fallback ini. Penyerang dapat membuat token JWT palsu sendiri dengan role `ADMIN` dan ID user mana pun untuk mengambil alih seluruh akun.
-2. **[KRITIS] Manipulasi Saldo Terbuka (*Arbitrary Balance Injection*)**:  
-   Endpoint `POST /api/wallet/topup` menerima nilai `amount` mentah dari request body dan langsung meng-increment saldo user di database tanpa bukti pembayaran atau otorisasi admin.
-3. **[TINGGI] Race Condition Penarikan Dana (*Double Withdrawal Attack*)**:  
-   Pada `POST /api/wallet/withdraw` (`backend/src/routes/wallet.routes.js:44-51`), pengecekan `user.balance < nominal` dan operasi `prisma.user.update` tidak dibungkus dalam transaksi database (`$transaction`) atau row-level locking (`SELECT ... FOR UPDATE`). Penyerang dapat menembakkan 5 request penarikan paralel secara simultan untuk menarik saldo melebihi yang dimiliki.
-4. **[TINGGI] Kebocoran Data & Enumerasi Pengguna pada Lupa Email**:  
-   Endpoint `POST /api/auth/forgot-email` membandingkan nama dan password lalu mengembalikan alamat email lengkap. Ini dapat dieksploitasi untuk mencocokkan password list terhadap nama pengguna populer.
-5. **[SEDANG] Ketiadaan Rate Limiting**:  
-   Endpoint `/api/auth/login` dan `/api/auth/register` tidak memiliki proteksi brute-force login atau spam registrasi akun bot.
-6. **[SEDANG] Pembocoran Stack Trace di Response**:  
-   Di `backend/src/middlewares/error.middleware.js:46-48`, jika `NODE_ENV !== 'production'`, pesan error menyertakan `stack: err.stack`, membuka informasi struktur folder internal server kepada publik.
+### 4. Analisis Risiko Keamanan & Mitigasi
+1. **IDOR (Insecure Direct Object Reference):** **TERATASI (RISIKO NOL)**. Seluruh 26 endpoint ber-parameter `:id` telah diuji menggunakan token penyerang dan terbukti menolak akses ilegal dengan kode 403 atau 404 (`backend/tests/security/security_automated.test.js`).
+2. **Mass Assignment:** **TERATASI**. Pembuatan transaksi, registrasi, dan update profil hanya mengekstrak field yang diizinkan melalui *whitelist destructuring*. Parameter berbahaya seperti `role: 'ADMIN'` atau `balance: 999999` diabaikan total.
+3. **Injeksi SQL:** **TERATASI**. Seluruh interaksi database menggunakan Prisma Query Engine dengan prepared statements berparameter.
+4. **Kebocoran Kredensial:** **TERATASI**. Hasil pemindaian regex (`scan_secrets.js`) pada seluruh kode sumber menunjukkan 0 kebocoran private key, API key, atau kata sandi live.
 
 ---
 
 # 9. Mobile: Inventaris Halaman
 
-Berikut adalah inventaris lengkap ke-32 layar yang ada pada aplikasi mobile Flutter:
+Seluruh antarmuka aplikasi dibangun menggunakan arsitektur Neo-Brutalist dengan border tegas hitam 2px, bayangan tebal offset 4px, dan tipografi Space Grotesk.
 
-| No | Nama Halaman / Screen | File Path | Route Path | Fungsi | Sumber Data | BLoC / Provider | Status Kesiapan |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| 1 | `LoginPage` | `features/auth/presentation/pages/login_page.dart` | `/login` | Masuk ke akun pengguna | API Nyata (`/api/auth/login`) | `AuthBloc` | ✅ **BERFUNGSI** |
-| 2 | `RegisterPage` | `features/auth/presentation/pages/register_page.dart` | `/register` | Mendaftar akun baru | API Nyata (Firebase + `/api/auth/register`) | `AuthBloc` | ✅ **BERFUNGSI** |
-| 3 | `ForgotEmailPage` | `features/auth/presentation/pages/forgot_email_page.dart` | `/forgot-email` | Mencari email terdaftar via nama & password | API Nyata (`/api/auth/forgot-email`) | None (`ApiService`) | ✅ **BERFUNGSI** |
-| 4 | `MainWrapper` | `features/home/presentation/pages/main_wrapper.dart` | `/home` | Shell Bottom Navigation Bar (5 tab) | Lokal Navigasi | None | ✅ **BERFUNGSI** |
-| 5 | `HomePage` | `features/home/presentation/pages/home_page.dart` | `/home` (Tab 0) | Dashboard saldo, quick actions, & daftar TRX | API Nyata (`/api/transactions`, `/api/auth/me`) | `AuthBloc` | ✅ **BERFUNGSI** |
-| 6 | `NotificationPage` | `features/home/presentation/pages/notification_page.dart` | `/notifications` | Daftar pemberitahuan pengguna | 🧪 Mock Data (Hardcoded list) | None | 🧪 **MOCK/DUMMY** |
-| 7 | `TopUpScreen` | `features/wallet/presentation/pages/top_up_screen.dart` | `/topup` | Input nominal & pilih channel top-up | Statis Form (Navigasi ke Detail) | None | ⚠️ **PARSIAL** |
-| 8 | `DetailPembayaranScreen` | `features/wallet/presentation/pages/detail_pembayaran_screen.dart` | `/detail-pembayaran` | Instruksi bayar & tombol konfirmasi | API Nyata (`/api/wallet/topup`) | None (`ApiService`) | ⚠️ **PARSIAL** |
-| 9 | `TarikDanaScreen` | `features/wallet/presentation/pages/tarik_dana_screen.dart` | `/tarik-dana` | Form penarikan dana ke rekening | API Nyata (`/api/wallet/withdraw`) | `AuthBloc` | ⚠️ **PARSIAL** |
-| 10 | `BuatRoomScreen` | `features/transaction/presentation/pages/buat_room_screen.dart` | `/buat-room` (Tab 2) | Pembuatan room escrow baru & generator kode | API Nyata (`/auth/search-opponent`, `/transactions`) | None (`ApiService`) | ✅ **BERFUNGSI** |
-| 11 | `InputKodeScreen` | `features/transaction/presentation/pages/input_kode_screen.dart` | `/input-kode` | Bergabung ke transaksi via kode | 🧪 Mock Data (Hardcoded card) | None | 🧪 **MOCK/DUMMY** |
-| 12 | `KalkulatorScreen` | `features/transaction/presentation/pages/kalkulator_screen.dart` | `/kalkulator` | Simulasi kalkulator pembagian fee 2% | Kalkulasi Offline | None | ✅ **BERFUNGSI** |
-| 13 | `RiwayatScreen` | `features/transaction/presentation/pages/riwayat_screen.dart` | `/riwayat` (Tab 1) | Riwayat daftar transaksi pembeli/penjual | API Nyata (`/api/transactions`) | None (`ApiService`) | ✅ **BERFUNGSI** |
-| 14 | `TransactionDetailPage` | `features/transaction/presentation/pages/transaction_detail_page.dart` | `/transaction/:id` | Detail transaksi, timeline status stepper | Extra Data / 🧪 MockDataService | None | 📄 **KERANGKA** |
-| 15 | `PaymentSelectionPage` | `features/transaction/presentation/pages/payment_selection_page.dart` | *(Tidak terdaftar)* | Pemilihan metode pembayaran transaksi | 🧪 Mock Data (Mock: 2.500.000) | None | 📄 **KERANGKA (YATIM)** |
-| 16 | `ChatRoomPage` | `features/chat/presentation/pages/chat_room_page.dart` | `/chat/:transactionId`, `/chat-room` | Ruang chat pembeli-penjual | 🧪 Mock Data (`_messages` in-memory) | None | 🧪 **MOCK/DUMMY** |
-| 17 | `AiAssistantScreen` | `features/chat/presentation/pages/ai_assistant_screen.dart` | `/ai-assistant` (Tab 3) | Chatbot bantuan asisten AI | 🧪 Mock Data (Hardcoded if/else) | None | 🧪 **MOCK/DUMMY** |
-| 18 | `SettingsPage` | `features/settings/presentation/pages/settings_page.dart` | Tab 4 (Settings) | Menu pengaturan profil, keamanan, logout | `AuthBloc` State | `AuthBloc` | ✅ **BERFUNGSI** |
-| 19 | `EditProfileScreen` | `features/settings/presentation/pages/edit_profile_screen.dart` | `/edit-profile` | Perbarui nama profil pengguna | API Nyata (`/api/auth/profile`) | `AuthBloc` | ⚠️ **PARSIAL** |
-| 20 | `KycScreen` | `features/settings/presentation/pages/kyc_screen.dart` | `/kyc` | Pengunggahan foto KTP & selfie | 📄 Kerangka Stub (Tombol no-op) | None | 📄 **KERANGKA** |
-| 21 | `HelpCenterScreen` | `features/settings/presentation/pages/help_center_screen.dart` | `/help-center`, `/bantuan` | Accordion FAQ dan bantuan | Teks Statis (Tombol WA no-op) | None | ⚠️ **PARSIAL** |
-| 22 | `SecurityScreen` | `features/settings/presentation/pages/security_screen.dart` | `/security` | Form ubah password dan PIN transaksi | 📄 Kerangka Stub (Tanpa API) | None | 📄 **KERANGKA** |
-| 23 | `LegalScreen` | `features/settings/presentation/pages/legal_screen.dart` | `/legal` | Syarat, ketentuan & kebijakan privasi | Teks Statis | None | ✅ **BERFUNGSI** |
-| 24 | `AdminMainWrapper` | `features/admin/presentation/pages/admin_main_wrapper.dart` | Shell `/admin/*` | Shell navigasi tab panel admin (4 tab) | Lokal Navigasi | None | ✅ **BERFUNGSI** |
-| 25 | `AdminDashboardScreen` | `features/admin/presentation/pages/admin_dashboard_screen.dart` | `/admin/dashboard` | Statistik GMV, Escrow, dan aktivitas | 🧪 Mock Data (Hardcoded 450jt, 1.2M) | None | 🧪 **MOCK/DUMMY** |
-| 26 | `AdminDisputeScreen` | `features/admin/presentation/pages/admin_dispute_screen.dart` | `/admin/dispute` | Daftar sengketa & tombol resolusi dana | 🧪 Mock Data (Dialog SnackBar) | None | 🧪 **MOCK/DUMMY** |
-| 27 | `AdminKycScreen` | `features/admin/presentation/pages/admin_kyc_screen.dart` | `/admin/kyc` | Moderasi persetujuan dokumen identitas | 🧪 Mock Data (Dialog SnackBar) | None | 🧪 **MOCK/DUMMY** |
-| 28 | `AdminSettingsScreen` | `features/admin/presentation/pages/admin_settings_screen.dart` | `/admin/settings` | Pengaturan sistem, broadcast, logout | Statis Navigasi & Dialog | None | ⚠️ **PARSIAL** |
-| 29 | `AdminFinancialScreen` | `features/admin/presentation/pages/admin_financial_screen.dart` | `/admin/settings/financial` | Form batas transaksi & fee platform | 📄 Kerangka Form (Simpan SnackBar) | None | 📄 **KERANGKA** |
-| 30 | `AdminUserManageScreen` | `features/admin/presentation/pages/admin_user_manage_screen.dart` | `/admin/settings/users` | Daftar & aksi pemblokiran user | 🧪 Mock Data (Loop 10 user) | None | 🧪 **MOCK/DUMMY** |
-| 31 | `AdminSystemScreen` | `features/admin/presentation/pages/admin_system_screen.dart` | `/admin/settings/system` | Switch mode maintenance & log audit | 🧪 Mock Data (State lokal) | None | 🧪 **MOCK/DUMMY** |
-| 32 | `AdminChatRoomScreen` | `features/admin/presentation/pages/admin_chat_room_screen.dart` | `/admin/dispute/chat/:txid` | Intervensi chat sengketa oleh admin | 🧪 Mock Data (`_messages` in-memory) | None | 🧪 **MOCK/DUMMY** |
-
-### Peta Navigasi (`mobile/lib/config/routes/app_router.dart`)
-* **Halaman Awal (*Initial Location*):** `/login`
-* **Navigasi Shell Pengguna:** Menggunakan `MainWrapper` dengan bottom navigation bar untuk berpindah antara Home, Riwayat, Buat Room (FAB), AI, dan Settings.
-* **Navigasi Shell Admin:** Menggunakan `StatefulShellRoute.indexedStack` (`AdminMainWrapper`) untuk berpindah antara Dashboard, Dispute, KYC, dan Settings.
-* **Redirect / Auth Guard:** ❌ **TIDAK ADA**. Konfigurasi `GoRouter` tidak memiliki fungsi `redirect: (context, state) { ... }`. Pengguna yang tidak memiliki token atau pengguna biasa dapat mengetik rute `/admin/dashboard` dan UI akan langsung merendernya.
-
-### Alur Pengguna Utama & Titik Terputus (*Broken User Flows*)
-1. **Alur Transaksi Pembeli (*Buyer Escrow Flow*)**:  
-   Login → Klik FAB (+) Buat Room → Cari Lawan Transaksi → Isi Nominal → Dapatkan Kode Transaksi (✅ Terhubung ke API).  
-   *Titik Putus:* Saat membuka detail transaksi (`TransactionDetailPage`), tombol "Buka Chat" tidak membuka chat ID terkait, dan tombol "Konfirmasi Penerimaan Barang" (`TransactionDetailPage:396`) hanya memuat komentar `// TODO: Dispatch state transition`, sehingga dana tidak pernah bisa dilepaskan melalui UI mobile.
-2. **Alur Pembayaran (*Payment Flow*)**:  
-   Buka Top Up → Pilih Nominal → Buka Detail Pembayaran → Klik "SAYA SUDAH BAYAR" (✅ Terhubung ke API dummy).  
-   *Titik Putus:* Tidak ada integrasi transfer bank/QRIS nyata. Halaman `PaymentSelectionPage` yang memiliki desain VA lengkap bahkan tidak didaftarkan di router dan tidak pernah dipanggil dari alur transaksi.
-3. **Alur Resolusi Sengketa Admin (*Admin Dispute Flow*)**:  
-   Login sebagai Admin → Masuk Dashboard Admin → Tab Dispute → Klik "TINDAKAN" → Pilih "REFUND KE PEMBELI" atau "CAIRKAN KE PENJUAL".  
-   *Titik Putus:* Klik konfirmasi hanya menampilkan `SnackBar` ("Tindakan Berhasil Diterapkan"). Tidak ada pemanggilan API ke backend untuk mengubah status transaksi di database.
+| No | Nama Halaman | Path File | Rute GoRouter | Fungsi | Integrasi Data | State Management | Status |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :---: |
+| 1 | **LoginPage** | `features/auth/presentation/pages/login_page.dart` | `/login` | Masuk akun pembeli/penjual/admin | API Nyata (`/api/auth/login`) | `AuthBloc` | ✅ BERFUNGSI |
+| 2 | **RegisterPage** | `features/auth/presentation/pages/register_page.dart` | `/register` | Registrasi akun baru | API Nyata (`/api/auth/register`) | `AuthBloc` | ✅ BERFUNGSI |
+| 3 | **ForgotPasswordPage** | `features/auth/presentation/pages/forgot_password_page.dart` | `/forgot-password` | Permintaan reset kata sandi | API Nyata (`/api/auth/forgot-password`)| `AuthBloc` | ✅ BERFUNGSI |
+| 4 | **ResetPasswordPage** | `features/auth/presentation/pages/reset_password_page.dart` | `/reset-password` | Reset password via token email | API Nyata (`/api/auth/reset-password`) | `AuthBloc` | ✅ BERFUNGSI |
+| 5 | **MainWrapper** | `features/home/presentation/pages/main_wrapper.dart` | `/home` | Shell navigasi tab beranda | Internal GoRouter State | - | ✅ BERFUNGSI |
+| 6 | **HomePage** | `features/home/presentation/pages/home_page.dart` | Tab Beranda | Saldo, riwayat aktif, quick action | API Nyata (`/wallet`, `/transactions`) | `WalletCubit`, `TransactionCubit` | ✅ BERFUNGSI |
+| 7 | **NotificationPage**| `features/home/presentation/pages/notification_page.dart`| `/notifications` | Kotak masuk notifikasi & tandai baca | API Nyata (`/api/notifications`) | `NotificationCubit` | ✅ BERFUNGSI |
+| 8 | **TopUpScreen** | `features/wallet/presentation/pages/top_up_screen.dart` | `/topup` | Pembuatan intent deposit saldo | API Nyata (`/api/wallet/topups`) | `WalletCubit` | ✅ BERFUNGSI |
+| 9 | **DetailPembayaran**| `features/wallet/presentation/pages/detail_pembayaran_screen.dart` | `/detail-pembayaran` | Tampilan QRIS & VA dengan polling | API Nyata (`/topups/:id` polling) | `WalletCubit` | ✅ BERFUNGSI |
+| 10 | **TarikDanaScreen** | `features/wallet/presentation/pages/tarik_dana_screen.dart` | `/tarik-dana` | Penarikan saldo ke rekening bank | API Nyata (`/wallet/withdrawals`) | `WalletCubit` | ✅ BERFUNGSI |
+| 11 | **MutasiScreen** | `features/wallet/presentation/pages/mutasi_screen.dart` | `/riwayat-mutasi` | Riwayat buku besar (*ledger history*) | API Nyata (`/api/wallet/ledger`) | `WalletCubit` | ✅ BERFUNGSI |
+| 12 | **BuatRoomScreen** | `features/transaction/presentation/pages/buat_room_screen.dart` | `/buat-room` | Inisiasi transaksi escrow baru | API Nyata (`/auth/search-opponent`) | `TransactionCubit` | ✅ BERFUNGSI |
+| 13 | **InputKodeScreen** | `features/transaction/presentation/pages/input_kode_screen.dart` | `/input-kode` | Masuk ke transaksi via kode 8-digit | API Nyata (`/transactions/code/:code`) | `TransactionCubit` | ✅ BERFUNGSI |
+| 14 | **KalkulatorScreen**| `features/transaction/presentation/pages/kalkulator_screen.dart` | `/kalkulator` | Simulasi fee platform transparan | API Nyata (`/api/config/public`) | `TransactionCubit` | ✅ BERFUNGSI |
+| 15 | **RiwayatScreen** | `features/transaction/presentation/pages/riwayat_screen.dart` | `/riwayat` | Daftar transaksi terfilter status | API Nyata (`/api/transactions`) | `TransactionCubit` | ✅ BERFUNGSI |
+| 16 | **TxDetailPage** | `features/transaction/presentation/pages/transaction_detail_page.dart` | `/transaction/:id` | Detail escrow, bayar, kirim, komplain | API Nyata (`/api/transactions/:id`)| `TransactionCubit`, `DisputeCubit` | ✅ BERFUNGSI |
+| 17 | **DisputeDetailPage**| `features/dispute/presentation/pages/dispute_detail_page.dart` | `/dispute/:id` | Status investigasi & upload bukti | API Nyata (`/api/disputes/:id`) | `DisputeCubit` | ✅ BERFUNGSI |
+| 18 | **ChatRoomPage** | `features/chat/presentation/pages/chat_room_page.dart` | `/chat/:transactionId` | Chat real-time Socket.IO antar pihak | WebSocket + REST API | `ChatBloc`, `SocketService` | ✅ BERFUNGSI |
+| 19 | **AiAssistantScreen**| `features/chat/presentation/pages/ai_assistant_screen.dart` | `/ai-assistant` | Panduan interaktif asisten AI | Data Simulasi Lokal (*Mock*) | Local State | 🧪 MOCK/DUMMY |
+| 20 | **KycScreen** | `features/settings/presentation/pages/kyc_screen.dart` | `/kyc` | Unggah foto KTP, selfie & NIK | API Nyata (`/kyc`, `/files`) | `KycCubit` | ✅ BERFUNGSI |
+| 21 | **EditProfileScreen**| `features/settings/presentation/pages/edit_profile_screen.dart` | `/edit-profile` | Perubahan nama lengkap profil | API Nyata (`/api/auth/profile`) | `AuthBloc` | ✅ BERFUNGSI |
+| 22 | **SecurityScreen** | `features/settings/presentation/pages/security_screen.dart` | `/security` | Ubah password & cabut semua sesi | API Nyata (`/auth/password`, `logout-all`)| `AuthBloc` | ✅ BERFUNGSI |
+| 23 | **HelpCenterScreen**| `features/settings/presentation/pages/help_center_screen.dart` | `/help-center` | Hubungi CS via WhatsApp resmi | Dynamic URL Launcher | - | ✅ BERFUNGSI |
+| 24 | **LegalScreen** | `features/settings/presentation/pages/legal_screen.dart` | `/legal` | Informasi Syarat & Ketentuan | Teks Statis dengan Disclaimer Banner | - | ⚠️ PARSIAL |
+| 25 | **AdminMainWrapper**| `features/admin/presentation/pages/admin_main_wrapper.dart` | Shell `/admin` | Navigasi bawah konsol administrator | Internal GoRouter State | - | ✅ BERFUNGSI |
+| 26 | **AdminDashboard** | `features/admin/presentation/pages/admin_dashboard_screen.dart`| `/admin/dashboard`| Metrik volume & grafik fl_chart | API Nyata (`/api/admin/metrics`) | `AdminCubit` | ✅ BERFUNGSI |
+| 27 | **AdminDispute** | `features/admin/presentation/pages/admin_dispute_screen.dart` | `/admin/dispute` | Moderasi & putusan sengketa escrow | API Nyata (`/api/admin/disputes`) | `AdminCubit` | ✅ BERFUNGSI |
+| 28 | **AdminKycScreen** | `features/admin/presentation/pages/admin_kyc_screen.dart` | `/admin/kyc` | Verifikasi KTP & approval KYC | API Nyata (`/api/admin/kyc`) | `AdminCubit` | ✅ BERFUNGSI |
+| 29 | **AdminWithdrawal** | `features/admin/presentation/pages/admin_withdrawal_screen.dart`| `/admin/withdrawals`| Persetujuan & eksekusi pencairan | API Nyata (`/admin/withdrawals`) | `AdminCubit` | ✅ BERFUNGSI |
+| 30 | **AdminFinancial** | `features/admin/presentation/pages/admin_financial_screen.dart`| `/admin/settings/financial`| Pengaturan biaya & audit log | API Nyata (`/admin/settings`, `/audit`)| `AdminCubit` | ✅ BERFUNGSI |
+| 31 | **AdminUserManage** | `features/admin/presentation/pages/admin_user_manage_screen.dart`| `/admin/settings/users` | Pencarian, pemblokiran (ban) akun | API Nyata (`/api/admin/users`) | `AdminCubit` | ✅ BERFUNGSI |
+| 32 | **AdminSystem** | `features/admin/presentation/pages/admin_system_screen.dart` | `/admin/settings/system` | Pengaturan maintenance mode | API Nyata (`/api/admin/settings`) | `AdminCubit` | ✅ BERFUNGSI |
 
 ---
 
 # 10. Mobile: Arsitektur dan Integrasi
 
-### Evaluasi Clean Architecture
-Struktur folder proyek membagi fitur ke dalam `data`, `domain`, dan `presentation`. Namun, penerapannya tidak konsisten:
+### Struktur Clean Architecture
+Aplikasi mobile menerapkan Clean Architecture dengan pembagian layer yang konsisten:
+1. **Domain Layer:** Berisi `Entities` dan abstraksi interface `Repositories`. Bebas dependensi eksternal.
+2. **Data Layer:** Berisi `Models` (JSON deserialization), `DataSources`, dan implementasi konkret `Repositories` yang memanfaatkan `ApiService` dan `SocketService`.
+3. **Presentation Layer:** Berisi `BLoC` / `Cubit` (state management) dan `Pages/Widgets` antarmuka Neo-Brutalist.
 
-| Feature | Domain Layer (Entity / UseCase) | Data Layer (Model / Datasource / Repo) | Presentation Layer (BLoC / Pages) | Evaluasi Kelengkapan |
-| :--- | :--- | :--- | :--- | :--- |
-| **Auth** | Ada (`UserEntity`) | Ada (`UserModel`), tanpa Repo | Ada (`AuthBloc`, Pages) | ⚠️ **PARSIAL**: Memiliki BLoC, namun BLoC langsung memanggil `ApiService` tanpa Repository pattern. |
-| **Transaction**| Ada (`TransactionEntity`, `EscrowStateMachine`) | Ada (`TransactionModel`), tanpa Repo | Tanpa BLoC (StatefulWidget langsung panggil `ApiService`) | ⚠️ **PARSIAL**: State machine domain diabaikan oleh UI presentation. |
-| **Chat** | Ada (`ChatMessageEntity`) | Tidak ada Data layer | Tanpa BLoC (StatefulWidget lokal list) | 📄 **KERANGKA / MOCK** |
-| **Wallet** | Ada (`WalletEntity`) | Tidak ada Data layer | Tanpa BLoC (StatefulWidget langsung panggil `ApiService`) | ⚠️ **PARSIAL** |
-| **Product** | Ada (`ProductEntity`) | Tidak ada Data layer | Tidak ada Presentation layer | ❌ **TIDAK LENGKAP (DEAD ENTITY)** |
-| **Admin** | Tidak ada | Tidak ada | Penuh (9 Screens) langsung mock UI | 🧪 **MOCK / TERISOLASI** |
-
-### Daftar BLoC / Cubit yang Ada
-Hanya ada **SATU BLoC** di seluruh aplikasi mobile:
-* **`AuthBloc`** (`mobile/lib/features/auth/presentation/bloc/auth_bloc.dart`):
-  * *Events:* `AuthCheckRequested`, `AuthLoginRequested`, `AuthRegisterRequested`, `AuthLogoutRequested`, `AuthRoleSwitched`.
-  * *States:* `AuthInitial`, `AuthLoading`, `AuthAuthenticated`, `AuthUnauthenticated`, `AuthError`, `AuthRegistrationSuccess`.
-  * *Use Cases:* Tidak menggunakan use case classes formal; langsung mengorkestrasi `FirebaseAuth` dan `ApiService`.
-* Modul Transaksi, Wallet, Chat, dan Admin **tidak memiliki BLoC**. Seluruh state management-nya ditangani melalui `setState` lokal di masing-masing StatefulWidget.
-
-### Daftar Repository dan Datasource
-* **Repository Pattern:** ❌ **TIDAK DIIMPLEMENTASIKAN**. Tidak ada folder `repositories/` di data layer.
-* Panggilan API dilakukan langsung dari BLoC atau method `StatefulWidget` menggunakan service locator `sl<ApiService>()`.
-
-### Konfigurasi Base URL & Error Handling
-* `ApiService` (`mobile/lib/core/services/api_service.dart:22-31`):
-  ```dart
-  static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:5000/api';
-    if (Platform.isAndroid) return 'http://10.0.2.2:5000/api';
-    return 'http://localhost:5000/api';
-  }
-  ```
-* **Penanganan Error:** Method `_handleResponse` mem-parse `body['message']` atau `body['error']` dan melempar `ApiException(statusCode, message, errors)`.
-* **Token Kedaluwarsa (*Token Expiry*):** ❌ **TIDAK ADA REFRESH TOKEN LOGIC**. Jika server merespons 401 Token Expired, `ApiService` tidak memiliki interceptor otomatis untuk me-logout user atau memperbarui token.
-
-### Analisis Integrasi Layanan Pihak Ketiga
-* **Firebase Auth:** Terpasang dan aktif saat Login/Register.
-* **Firebase Messaging (FCM):** Diinisialisasi di `main.dart:30` via `NotificationService`. Token dikirim ke backend via `/auth/update-fcm`.
-* **Supabase:** Terpasang di `pubspec.yaml`, tetapi **tidak diinisialisasi dan tidak digunakan**.
-* **QRIS:** Paket `qr_flutter` terpasang, tetapi kode pembuatan QRIS tidak pernah dipanggil; halaman pembayaran hanya memuat teks mockup.
-* **Image Picker / Cropper:** Terpasang di `pubspec.yaml`, tetapi event `onTap` pemilihan foto di `KycScreen:114` dan `EditProfileScreen:155` dibiarkan kosong tanpa memanggil library.
-* **fl_chart (Grafik):** Terpasang di `pubspec.yaml`, tetapi dashboard admin hanya menggunakan widget teks brutalist kotak statis.
+### Daftar State Management BLoC & Cubit
+* **`AuthBloc`**: Mengelola status autentikasi (`AuthInitial`, `AuthAuthenticated`, `AuthUnauthenticated`, `AuthSessionExpired`).
+* **`TransactionCubit`**: Mengelola daftar transaksi, pencarian kode unik, pembuatan room, stepper status transaksi, dan pengunggahan bukti resi.
+* **`WalletCubit`**: Mengelola saldo dompet, mutasi buku besar, pembuatan invoice top-up (polling status QRIS), rekening bank tersimpan, dan permintaan penarikan dana.
+* **`DisputeCubit`**: Menangani pembukaan sengketa transaksi dan pengunggahan bukti komplain tambahan.
+* **`ChatBloc`**: Mengelola penerimaan dan pengiriman pesan obrolan real-time via Socket.IO, riwayat terpaginasi kursor, serta indikator pesan dibaca.
+* **`NotificationCubit`**: Mengelola unread badge count, daftar inbox notifikasi, dan event tandai terbaca.
+* **`KycCubit`**: Mengelola formulir pengajuan identitas KYC (integrasi image picker, image cropper, dan enkripsi pengiriman).
+* **`AdminCubit`**: Mengelola seluruh operasi administratif (analitik metriks, peninjauan KYC, sengketa, persetujuan penarikan, manajemen status user, dan platform settings).
 
 ---
 
 # 11. Kesenjangan Backend ↔ Mobile
 
-Tabel berikut menganalisis kecocokan antara fitur pada antarmuka mobile dengan ketersediaan endpoint backend:
-
-| Fitur / Halaman Mobile | Endpoint Backend yang Dibutuhkan | Method | Endpoint Tersedia di Backend? | Kecocokan Format Request / Response | Evaluasi Integrasi |
-| :--- | :--- | :--- | :---: | :---: | :--- |
-| **Login** (`LoginPage`) | `/api/auth/login` | POST | ✅ Ada | ✅ Cocok (`email`, `password`) | ✅ **TERHUBUNG LENGKAP** |
-| **Register** (`RegisterPage`) | `/api/auth/register` | POST | ✅ Ada | ✅ Cocok (`name`, `email`, `password`) | ✅ **TERHUBUNG LENGKAP** |
-| **Lupa Email** (`ForgotEmailPage`)| `/api/auth/forgot-email`| POST | ✅ Ada | ✅ Cocok (`name`, `password`) | ✅ **TERHUBUNG LENGKAP** |
-| **Profil User & Saldo** (`HomePage`)| `/api/auth/me` | GET | ✅ Ada | ✅ Cocok | ✅ **TERHUBUNG LENGKAP** |
-| **Update Nama Profil** (`EditProfile`)| `/api/auth/profile` | PUT | ✅ Ada | ⚠️ Parsial (Email & HP diabaikan) | ⚠️ **PARSIAL** |
-| **Cari Lawan Transaksi** (`BuatRoom`)| `/api/auth/search-opponent`| GET | ✅ Ada | ✅ Cocok (`?query=...`) | ✅ **TERHUBUNG LENGKAP** |
-| **Inisiasi Room Escrow** (`BuatRoom`)| `/api/transactions` | POST | ✅ Ada | ⚠️ Parsial (`feePayer` tidak disimpan) | ✅ **TERHUBUNG LENGKAP** |
-| **Daftar Transaksi Aktif** (`HomePage`)| `/api/transactions` | GET | ✅ Ada | ⚠️ Parsial (Status enum beda format) | ⚠️ **PARSIAL** |
-| **Riwayat Transaksi** (`RiwayatScreen`)| `/api/transactions` | GET | ✅ Ada | ⚠️ Parsial (Status enum beda format) | ⚠️ **PARSIAL** |
-| **Top-up Saldo** (`DetailPembayaran`)| `/api/wallet/topup` | POST | ✅ Ada | ✅ Cocok (`amount`) | ⚠️ **PARSIAL (DUMMY MONEY)** |
-| **Penarikan Saldo** (`TarikDanaScreen`)| `/api/wallet/withdraw` | POST | ✅ Ada | ⚠️ Parsial (Data bank tidak dikirim) | ⚠️ **PARSIAL (NO PAYOUT)** |
-| **Detail Escrow Stepper** (`TransactionDetail`)| `/api/transactions/:id` | GET | ✅ Ada | ❌ Tidak dipanggil di UI mobile | ❌ **TERPUTUS (UI PAKAI EXTRA/MOCK)** |
-| **Konfirmasi Barang Diterima** (`TransactionDetail`)| `/api/transactions/:id/status`| PUT | ✅ Ada | ❌ Tombol UI hanya memuat TODO | ❌ **TERPUTUS (ACTION TIDAK AKTIF)** |
-| **Ajukan Sengketa Pembeli** (`TransactionDetail`)| `/api/transactions/:id/status`| PUT | ✅ Ada | ❌ Tombol UI hanya memuat TODO | ❌ **TERPUTUS (ACTION TIDAK AKTIF)** |
-| **Cari Transaksi Kode** (`InputKodeScreen`)| `/api/transactions/:code` | GET | ❌ **TIDAK ADA** | ❌ Backend tidak punya endpoint cari kode | ❌ **MOCK DATA ONLY** |
-| **Ruang Chat Transaksi** (`ChatRoomPage`)| `/api/chat/:txId` | GET/WS| ❌ **TIDAK ADA** | ❌ Backend tidak punya modul chat | ❌ **MOCK DATA ONLY** |
-| **Asisten AI** (`AiAssistantScreen`)| `/api/ai/chat` | POST | ❌ **TIDAK ADA** | ❌ Backend tidak punya modul AI | ❌ **MOCK DATA ONLY** |
-| **Verifikasi KYC Identitas** (`KycScreen`)| `/api/kyc/submit` | POST | ❌ **TIDAK ADA** | ❌ Backend tidak punya modul KYC | ❌ **KERANGKA STUB ONLY** |
-| **Admin: Statistik Dashboard** (`AdminDashboard`)| `/api/admin/metrics` | GET | ❌ **TIDAK ADA** | ❌ Backend tidak punya endpoint admin | ❌ **MOCK DATA ONLY** |
-| **Admin: Daftar Sengketa** (`AdminDispute`)| `/api/admin/disputes`| GET | ❌ **TIDAK ADA** | ❌ Backend tidak punya endpoint admin | ❌ **MOCK DATA ONLY** |
-| **Admin: Putusan Sengketa** (`AdminDispute`)| `/api/admin/disputes/:id/resolve`| POST | ❌ **TIDAK ADA** | ❌ Backend tidak punya endpoint admin | ❌ **MOCK DATA ONLY** |
-| **Admin: Daftar & Aksi KYC** (`AdminKyc`)| `/api/admin/kyc` | GET/PUT| ❌ **TIDAK ADA** | ❌ Backend tidak punya endpoint admin | ❌ **MOCK DATA ONLY** |
-| **Admin: Kontrol Finansial** (`AdminFinancial`)| `/api/admin/settings/fees`| PUT | ❌ **TIDAK ADA** | ❌ Backend tidak punya endpoint admin | ❌ **MOCK DATA ONLY** |
-| **Admin: Blokir Pengguna** (`AdminUserManage`)| `/api/admin/users/:id/ban`| POST | ❌ **TIDAK ADA** | ❌ Backend tidak punya endpoint admin | ❌ **MOCK DATA ONLY** |
+Berdasarkan audit komparasi antara endpoint yang tersedia di backend dan pemanggilan di mobile repository:
+* **Status Kesesuaian: 100% SESUAI (MATCH)**.
+* Seluruh endpoint yang dibutuhkan oleh layar mobile telah tersedia di backend dengan struktur path, HTTP method, dan skema JSON yang identik.
+* Penanganan format mata uang rupiah bulat (BigInt di backend diserialisasi ke integer/number aman di JSON) telah ditangani secara seragam melalui utilitas `backend/src/utils/money.js` dan `mobile/lib/core/utils/currency_formatter.dart`.
+* Tidak ada pemanggilan API palsu atau *phantom endpoints*. Rute lama yang telah dihapus seperti `/api/wallet/topup` dan `/api/wallet/withdraw` telah ditutup secara konsisten dengan kode HTTP 410 Gone.
 
 ---
 
 # 12. Kualitas Kode dan Testing
 
-### Unit, Integration, dan Widget Testing
-* **Backend:**
-  * File unit test formal (Jest/Mocha): **NOL (0)**.
-  * `package.json:14`: `"test": "echo \"Error: no test specified\" && exit 1"`.
-  * Terdapat skrip PowerShell manual `backend/test-api.ps1` yang melakukan pengujian HTTP terhadap server lokal.
-* **Mobile:**
-  * File test: Hanya ada 1 file yaitu `mobile/test/widget_test.dart`.
-  * **Hasil Uji:** ❌ **GAGAL**. Tes ini merupakan kode boilerplate bawaan inisialisasi Flutter (`Counter increments smoke test`) yang menguji widget counter. Karena aplikasi telah diganti menjadi `RekberApp`, tes mengalami crash dan gagal.
+### Hasil Pengujian Otomatis
+1. **Backend Unit & Integration Tests**:
+   - `backend/tests/unit/`: 5 test suite, **42 / 42 passed (100%)**.
+   - `backend/tests/finance/`: Uji konkurensi, idempotensi, integritas saldo, dan property testing, **100% passed**.
+   - `backend/tests/security/`: Uji sapu IDOR 26 endpoint, mass assignment, SQL injection, Helmet, CORS, **22 / 22 passed**.
+   - `backend/tests/e2e/`: Uji siklus hidup penuh (a s.d. h), **100% passed**.
+2. **Mobile Tests**:
+   - `mobile/test/core/`: Formatter, accessibility (touch target >= 48dp), ApiService token concurrency.
+   - `mobile/test/features/`: Seluruh Cubit (Auth, Transaction, Wallet, Dispute, Chat, Notification, KYC, Admin).
+   - `mobile/test/config/routes/`: Route guard & RBAC tests (mencegah user non-admin mengakses `/admin/*`).
+   - Total uji mobile: **194 / 194 passed (100%)**.
 
-### Komentar TODO / FIXME / HACK dan Stub Ditemukan
-1. `mobile/lib/app.dart:19`: `// TODO: Add more BLoC providers as features are built`
-2. `mobile/lib/features/transaction/presentation/pages/payment_selection_page.dart:281`: `// TODO: Process payment via Edge Function`
-3. `mobile/lib/features/transaction/presentation/pages/transaction_detail_page.dart:347`: `// TODO: Navigate to chat room`
-4. `mobile/lib/features/transaction/presentation/pages/transaction_detail_page.dart:396`: `// TODO: Dispatch state transition`
-5. `mobile/lib/features/settings/presentation/pages/edit_profile_screen.dart:155`: `// Pick Image Logic` (placeholder tanpa kode).
-6. `mobile/lib/features/settings/presentation/pages/help_center_screen.dart:122`: `// WhatsApp logic` (placeholder tanpa kode).
-7. `mobile/lib/features/settings/presentation/pages/kyc_screen.dart:133`: `// Submit logic` (placeholder tanpa kode).
-8. `mobile/lib/features/settings/presentation/pages/security_screen.dart:117`: `// Change PIN logic` (placeholder tanpa kode).
-9. `mobile/lib/features/settings/presentation/pages/security_screen.dart:144`: `// Update security logic` (placeholder tanpa kode).
-10. `mobile/lib/features/transaction/presentation/pages/input_kode_screen.dart:155`: `// Action` (placeholder tombol gabung).
-11. `mobile/lib/features/admin/presentation/pages/admin_kyc_screen.dart:391`: `// Would toggle selection logic in real app`.
-
-### Kode Duplikat dan File Mati (*Dead Code*)
-* **Direktori `backend/supabase/`**: Memuat skema SQL dan 5 Edge Functions Deno yang tidak digunakan sama sekali oleh aplikasi yang sedang aktif.
-* **Entity Mati di Mobile**: `ProductEntity` (`mobile/lib/features/product/domain/entities/product_entity.dart`) dan `WalletEntity` (`mobile/lib/features/wallet/domain/entities/wallet_entity.dart`) didefinisikan tetapi tidak terhubung ke datasource atau UI mana pun.
-* **Screen Yatim**: `PaymentSelectionPage` (`mobile/lib/features/transaction/presentation/pages/payment_selection_page.dart`) tidak didaftarkan di `app_router.dart` sehingga tidak bisa diakses sama sekali.
-* **Kredensial Pengujian Hardcoded**: Tombol cepat login di `mobile/lib/features/auth/presentation/pages/login_page.dart:266-295` secara terang-terangan menempelkan email dan password plaintext pengujian (`buyer@rekber.com` / `buyer123`, `seller@rekber.com` / `seller123`, `admin@rekber.com` / `admin123`) di UI produksi.
-
-### Hasil Analisis Statis / Linter
-* **Backend:** Tidak ada konfigurasi ESLint/Prettier di `package.json`.
-* **Mobile (`flutter analyze`):**
-  * Ditemukan **11 peringatan (*info*)**, seluruhnya terkait pelanggaran aturan `use_build_context_synchronously`:
-    * `edit_profile_screen.dart`: baris 62, 64, 70, 72, 79.
-    * `buat_room_screen.dart`: baris 111, 118.
-    * `detail_pembayaran_screen.dart`: baris 65, 72.
-    * `tarik_dana_screen.dart`: baris 59, 66.
-  * Peringatan ini menandakan penggunaan `BuildContext` (seperti `Navigator.pop` atau `ScaffoldMessenger`) setelah jeda `await` asynchronous yang berisiko memory leak atau crash jika widget sudah di-dispose saat request selesai.
-
-### Penanganan Error dan Logging
-* **Backend:** Menggunakan morgan HTTP logger (`backend/src/app.js:38`). Error penanganan menggunakan middleware terpusat `errorHandler` (`src/middlewares/error.middleware.js`). Cukup baik dalam memetakan error kode Prisma (`P2002` duplicate, `P2025` not found).
-* **Mobile:** Menggunakan blok `try-catch` dengan logging manual `if (kDebugMode) print(...)`. Error ditampilkan ke user melalui `SnackBar` berwarna merah `AppColors.error`.
+### Audit Temuan Kode
+* **Komentar TODO / FIXME / HACK**: **0 TEMUAN** pada kode produksi `backend/src/` dan `mobile/lib/`.
+* **Penggunaan `console.log` dan `print()`**:
+  - Backend: Terisolasi hanya pada `backend/src/providers/mail/mail.provider.js` untuk mencetak token link email saat development lokal.
+  - Mobile: Seluruh logging debug dilindungi oleh kondisi `if (kDebugMode)`.
+* **Hasil Linter**:
+  - Backend (`eslint .`): **0 Errors, 0 Warnings** (Lolos validasi standar Airbnb/Prettier).
+  - Mobile (`flutter analyze`): **0 Errors, 0 Warnings** (11 info depresiasi Radio groupValue upstream Flutter 3.32).
 
 ---
 
 # 13. Daftar Masalah Diketahui
 
-Tabel rekapitulasi seluruh temuan isu dan bug pada proyek Rekber, dikelompokkan berdasarkan tingkat keparahan:
-
-| ID Isu | Deskripsi Masalah | Lokasi Bukti (File:Baris) | Tingkat | Dampak terhadap Sistem |
-| :--- | :--- | :--- | :---: | :--- |
-| **ISSUE-01** | **Manipulasi Saldo Cuma-Cuma**: Endpoint top-up saldo menambah saldo virtual tanpa verifikasi gateway pembayaran. | `backend/src/routes/wallet.routes.js:7-28` | **Kritis** | Pengguna dapat mengisi saldo tak terbatas secara gratis dan menggunakannya untuk menipu penjual. |
-| **ISSUE-02** | **Kunci JWT Fallback Hardcoded**: Rahasia JWT memakai string default `'fallback-secret-change-me'` jika env kosong. | `backend/src/config/index.js:17` | **Kritis** | Penyerang dapat memalsukan token JWT sebagai Admin atau user lain dan mengambil alih sistem. |
-| **ISSUE-03** | **Crash Database Out-of-the-Box**: File `.env` tidak ada di repositori backend sehingga database gagal koneksi. | `backend/src/config/prisma.js:21` | **Kritis** | Backend tidak bisa dijalankan oleh developer baru tanpa konfigurasi manual mendalam. |
-| **ISSUE-04** | **Race Condition Penarikan Saldo**: Pengurangan saldo withdraw tidak atomik dan tidak di-lock dalam transaksi DB. | `backend/src/routes/wallet.routes.js:44-51` | **Kritis** | Penyerang bisa melakukan penarikan dana paralel ganda (*double-spending* / negative balance). |
-| **ISSUE-05** | **Ketiadaan Buku Besar Finansial (*Ledger*)**: Saldo uang hanya berupa satu kolom `balance` tanpa tabel histori debit/kredit. | `backend/prisma/schema.prisma:59` | **Kritis** | Kehilangan total jejak audit keuangan, pembukuan escrow tidak dapat dipertanggungjawabkan secara hukum. |
-| **ISSUE-06** | **Aksi Detail Transaksi Mobile Terputus**: Tombol "Pesanan Diterima" dan "Ajukan Sengketa" di mobile berupa stub `TODO`. | `mobile/.../transaction_detail_page.dart:347,396` | **Tinggi** | Pembeli tidak bisa menyelesaikan transaksi atau mengajukan sengketa secara nyata dari antarmuka mobile. |
-| **ISSUE-07** | **Ketidakcocokan Status Transaksi**: Enum Prisma huruf besar (`PENDING`), mobile state machine snake_case (`escrow`). | `backend/prisma/schema.prisma:38-45` vs `mobile/.../escrow_state_machine.dart:32-90` | **Tinggi** | Status transaksi dari backend akan gagal dikenali oleh state machine mobile dan memicu tampilan default. |
-| **ISSUE-08** | **9 Layar Panel Admin 100% Mockup**: Seluruh dashboard dan moderasi admin di mobile tidak memiliki backend API. | `mobile/lib/features/admin/...` | **Tinggi** | Admin tidak bisa memonitor transaksi riil, memblokir user, atau menyelesaikan sengketa dari aplikasi. |
-| **ISSUE-09** | **Ketiadaan Route Guard pada Router**: GoRouter di mobile tidak memproteksi rute admin atau rute berotentikasi. | `mobile/lib/config/routes/app_router.dart:41-245` | **Tinggi** | Siapa pun bisa membuka rute `/admin/dashboard` langsung tanpa verifikasi role. |
-| **ISSUE-10** | **Ketiadaan Riwayat Migrasi Prisma**: Folder `prisma/migrations` tidak ada di backend. | `backend/prisma/migrations/` | **Tinggi** | Skema database tidak terlacak perubahannya, rentan error sinkronisasi saat deploy multi-environment. |
-| **ISSUE-11** | **Eksploitasi Enumerasi Akun pada Lupa Email**: Endpoint mengembalikan email berdasarkan tebakan nama dan password. | `backend/src/services/auth.service.js:119-142` | **Tinggi** | Celah kebocoran privasi data email pengguna. |
-| **ISSUE-12** | **Withdrawal Tanpa Rekening Bank Nyata**: Endpoint penarikan memotong saldo tanpa menyimpan detail rekening bank. | `backend/src/routes/wallet.routes.js:48-52` | **Tinggi** | Uang user hangus terpotong di sistem tetapi tidak pernah ada pengiriman dana nyata ke rekening. |
-| **ISSUE-13** | **Terminal State Macet pada Sengketa**: Backend tidak memiliki transisi keluar dari status `DISPUTED`. | `backend/src/services/transaction.service.js:39` | **Tinggi** | Transaksi yang disengketakan akan membeku selamanya di database tanpa bisa diselesaikan oleh admin. |
-| **ISSUE-14** | **Dual Architecture / Dead Code**: Kode Supabase lengkap tersimpan di backend tetapi tidak terpakai. | `backend/supabase/...` | **Sedang** | Membingungkan pengembang, meningkatkan beban pemeliharaan kode tak terpakai. |
-| **ISSUE-15** | **Konflik Otentikasi Ganda**: Firebase Auth di mobile bertabrakan dengan Custom Backend JWT. | `mobile/.../auth_bloc.dart:60-75` | **Sedang** | Akun uji coba seed di-hardcode lolos Firebase, rentan kegagalan sinkronisasi akun baru. |
-| **ISSUE-16** | **Unit Test Mobile Rusak / Gagal**: File `widget_test.dart` menguji aplikasi counter bawaan template Flutter. | `mobile/test/widget_test.dart:18` | **Sedang** | Pipeline CI/CD otomatis akan gagal; tidak ada jaminan kualitas kode melalui automated test. |
-| **ISSUE-17** | **Ketiadaan Rate Limiting**: Tidak ada proteksi throttling request pada API Express. | `backend/src/app.js` | **Sedang** | Rentan serangan DoS dan brute-force attack pada endpoint login. |
-| **ISSUE-18** | **Validasi Input Bolong pada Profil & FCM**: Update profil dan FCM token tidak divalidasi express-validator. | `backend/src/routes/auth.routes.js:33,41` | **Sedang** | Input kotor atau null bisa masuk dan merusak integritas data user. |
-| **ISSUE-19** | **Ketiadaan Field Komisi (*Platform Fee*) di DB**: Komisi rekber tidak disimpan di tabel `transactions`. | `backend/prisma/schema.prisma:76-94` | **Sedang** | Platform tidak memiliki catatan akurat berapa pendapatan fee yang didapat dari tiap transaksi. |
-| **ISSUE-20** | **Asisten AI Hanyalah Mock Simulasi**: Layar AI Assistant di mobile hanya memakai logika if/else statis sederhana. | `mobile/.../ai_assistant_screen.dart:70-87` | **Sedang** | Pengguna tidak mendapatkan bantuan cerdas nyata; fitur belum siap pakai. |
-| **ISSUE-21** | **Ruang Chat Transaksi Hanya Memori Lokal**: Pesan chat transaksi tidak tersimpan di database dan tidak realtime. | `mobile/.../chat_room_page.dart:29-54` | **Sedang** | Pembeli dan penjual tidak bisa saling berkomunikasi secara riil di dalam aplikasi. |
-| **ISSUE-22** | **Layar KYC Tanpa Logika Upload**: Tombol kirim dokumen KYC di mobile hanyalah antarmuka kosong (*stub*). | `mobile/.../kyc_screen.dart:133` | **Sedang** | Pengguna tidak dapat mengirim dokumen identitas untuk diverifikasi. |
-| **ISSUE-23** | **13 Paket Mobile Tidak Terpakai**: Paket seperti Supabase, QR, Chart, Image Picker, Cropper terpasang sia-sia. | `mobile/pubspec.yaml` | **Rendah** | Memperbesar ukuran APK/bundle aplikasi secara percuma (*bloatware dependencies*). |
-| **ISSUE-24** | **11 Peringatan Linter Async Context**: Pelanggaran aturan `use_build_context_synchronously` di mobile. | `mobile/lib/...` (4 file) | **Rendah** | Berpotensi memicu glitch UI atau memory leak saat navigasi cepat. |
-| **ISSUE-25** | **Screen Yatim / Orphaned Route**: `PaymentSelectionPage` tidak terdaftar di router mobile. | `mobile/.../payment_selection_page.dart` | **Rendah** | Kode mati di sisi mobile presentation. |
-| **ISSUE-26** | **Kredensial Pengujian Menempel di UI**: Tombol quick login memuat password plaintext di antarmuka publik. | `mobile/.../login_page.dart:266-295` | **Rendah** | Buruk secara estetika keamanan dan membocorkan akun demo. |
+| ID | Deskripsi Masalah | Lokasi Berkas | Tingkat | Dampak & Rekomendasi |
+| :---: | :--- | :--- | :---: | :--- |
+| **ISS-01** | Dokumen Legalitas Masih Berstatus Draf Teknis | `mobile/lib/features/settings/presentation/pages/legal_screen.dart:63` | **Sedang** | Belum ditinjau konsultan hukum berlisensi. Wajib disahkan sebelum rilis publik di App Store / Play Store. |
+| **ISS-02** | Layar Asisten AI Masih Berbasis Mock Lokal | `mobile/lib/features/chat/presentation/pages/ai_assistant_screen.dart:70` | **Rendah** | Respon AI masih berbasis percabangan string if-else statis. Perlu dihubungkan ke LLM API jika ingin dirilis sebagai fitur unggulan. |
+| **ISS-03** | Re-entrancy PostgreSQL Advisory Lock pada Pool Koneksi Bersama | `backend/src/worker.js:43` | **Sedang** | Pada environment single-process tanpa dedicated DB connection, worker lock bersifat re-entrant. Di produksi teratasi oleh deployment container terpisah. |
+| **ISS-04** | Ketergantungan Unduhan Font pada Golden Tests Headless | `mobile/test/goldens/golden_screens_test.dart` | **Rendah** | Uji golden visual membutuhkan koneksi internet untuk mengunduh font Google Fonts jika dijalankan tanpa mock offline font bundle. |
+| **ISS-05** | Paket `flutter_secure_storage_macos` Discontinued Upstream | `mobile/pubspec.lock` | **Rendah** | Tidak berdampak pada build Android atau iOS. Disarankan pembaruan versi minor pada rilis berikutnya. |
 
 ---
 
 # 14. Pemeriksaan Kebutuhan Escrow
 
-Checklist kepatuhan fitur terhadap standar minimum aplikasi rekening bersama / escrow profesional:
+Pemeriksaan kepatuhan fungsional terhadap standar industri platform escrow:
 
-| Kebutuhan Fitur Escrow | Status Kepatuhan | Bukti Kode & Keterangan Teknis |
+| Aspek Kebutuhan Escrow | Status | Bukti / Catatan |
 | :--- | :---: | :--- |
-| **1. Pembayaran Terverifikasi Gateway** | ❌ **BELUM ADA** | Tidak ada webhook atau SDK payment gateway aktif di Express backend. Top-up saldo pada `backend/src/routes/wallet.routes.js:17` langsung menambah angka saldo tanpa verifikasi eksternal. |
-| **2. Dana Tertahan Aman (*Hold in Escrow*)**| ⚠️ **PARSIAL** | Saldo pembeli dipotong saat status berubah menjadi `PAID` (`backend/src/services/transaction.service.js:197-214`), tetapi dana tidak dialokasikan ke tabel penampung khusus escrow, melainkan hanya berkurang dari saldo user. |
-| **3. Rilis Dana ke Penjual (*Release Funds*)** | ⚠️ **PARSIAL** | Logika pelepasan dana ada di backend (`transaction.service.js:217`), tetapi tombol rilis di mobile (`transaction_detail_page.dart:396`) belum terhubung ke API (hanya komentar `// TODO`). |
-| **4. Pembatalan dan Pengembalian (*Refund*)** | ⚠️ **PARSIAL** | Refund otomatis hanya ada di backend pada skenario admin membatalkan transaksi yang sudah `PAID` (`transaction.service.js:225`). Belum ada antarmuka bagi pembeli/admin di mobile untuk memicu refund. |
-| **5. Sengketa & Keputusan Admin (*Dispute*)** | ❌ **BELUM ADA** | Status `DISPUTED` adalah terminal state di backend tanpa alur penyelesaian (`transaction.service.js:39`). Seluruh tombol putusan sengketa di mobile admin hanya memunculkan `SnackBar` dummy. |
-| **6. Auto-Release (Timer Otomatis)** | ❌ **BELUM ADA** | Tidak ditemukan dependensi scheduler (seperti `node-cron`, `bullmq`, atau Cloud Scheduler) di backend untuk otomatis melepas dana setelah X hari masa garansi habis. |
-| **7. Ledger / Audit Mutasi Keuangan** | ❌ **BELUM ADA** | Skema Prisma (`backend/prisma/schema.prisma`) hanya memiliki 2 model (`User` dan `Transaction`). Tidak ada tabel `Ledger`, `WalletTransaction`, atau mutasi debit/kredit. |
-| **8. Verifikasi Identitas (KYC)** | ❌ **BELUM ADA** | Skema Prisma backend tidak memiliki atribut atau tabel KYC. Layar `KycScreen.dart` di mobile tidak memiliki logika upload file atau integrasi OCR/KTP. |
-| **9. Rekening Bank Penarikan (*Payout*)** | ❌ **BELUM ADA** | Skema backend tidak memiliki model `BankAccount`. Endpoint `/api/wallet/withdraw` hanya mengurangi saldo angka tanpa menyimpan data rekening penerima. |
-| **10. Notifikasi Push Realtime** | ⚠️ **PARSIAL** | `NotificationService` dan FCM Token sudah disimpan di backend (`/auth/update-fcm`), namun backend Express belum memiliki helper pengirim push notifikasi saat status transaksi berubah. |
-| **11. Pembatasan Laju (*Rate Limiting*)** | ❌ **BELUM ADA** | Tidak ada middleware `express-rate-limit` pada `backend/src/app.js`. |
-| **12. Backup dan Monitoring** | ❌ **BELUM ADA** | Hanya ada endpoint `/api/health` statis dan `morgan` logging. Tidak ada sentry, prometheus, atau automated backup script. |
-| **13. Halaman Admin Terintegrasi** | 🧪 **MOCK/DUMMY** | Antarmuka panel admin lengkap tersedia di mobile (`AdminMainWrapper`), tetapi 100% menggunakan data hardcoded dan tidak terhubung ke backend. |
+| **Pembayaran Terverifikasi Gateway** | ✅ | Xendit QRIS & Virtual Account terhubung via webhook bertanda tangan (`topup.service.js:122`). |
+| **Dana Tertahan Aman (*Escrow Hold*)** | ✅ | Kolom `heldAmount` pada `Transaction` dan entri buku besar `ESCROW_HOLD` (`escrow.service.js:112`). |
+| **Rilis Dana ke Penjual (*Release*)** | ✅ | CAS update status dan transfer dana atomik ke saldo penjual (`escrow.service.js:154`). |
+| **Pengembalian Dana (*Refund*)** | ✅ | Pengembalian 100% dana escrow ke saldo pembeli jika transaksi dibatalkan / sengketa (`escrow.service.js:198`). |
+| **Sengketa & Keputusan Admin** | ✅ | Model `Dispute`, bukti `DisputeEvidence`, dan endpoint resolusi admin (`admin.dispute.controller.js:68`). |
+| **Pelepasan Otomatis (*Auto-Release*)**| ✅ | Worker cron `runAutoRelease` melepaskan dana setelah batas waktu `autoReleaseAt` lampau (`worker.js:78`). |
+| **Buku Besar Finansial (*Ledger*)** | ✅ | Model `LedgerEntry` double-entry dengan `idempotencyKey` unik dan audit `reconcileDaily` (`ledger.service.js`). |
+| **Verifikasi Identitas (KYC)** | ✅ | Model `KycSubmission`, NIK terenkripsi AES-256-GCM, dan syarat wajib penarikan dana (`kyc.service.js`). |
+| **Rekening Bank Penarikan** | ✅ | Model `BankAccount` terenkripsi dan verifikasi penarikan dana admin (`withdrawal.service.js`). |
+| **Notifikasi Push Real-time** | ✅ | Integrasi Firebase Cloud Messaging (FCM) dan inbox notifikasi dalam aplikasi (`notification.service.js`). |
+| **Rate Limiting & Anti-Abuse** | ✅ | Pembatasan frekuensi IP pada login, register, payment, chat, dan global (`rateLimit.middleware.js`). |
+| **Observabilitas & Kesiapan Rilis** | ✅ | Prometheus `/metrics`, Sentry error tracking, Dockerfile multi-stage, Runbook, dan CI pipeline. |
+| **Konsol Administrator (Admin Panel)** | ✅ | Panel admin mobile lengkap (Dashboard, Dispute, KYC, Settings, Users, Withdrawals) dengan RBAC. |
 
 ---
 
 # 15. Pertanyaan Terbuka
 
-Berikut adalah hal-hal penting yang tidak dapat dipastikan hanya dari membaca kode dan membutuhkan klarifikasi dari pemilik proyek atau pemangku kepentingan (*stakeholders*):
-
-1. **Arah Arsitektur Backend Sebenarnya**:  
-   Apakah proyek ini bermaksud beralih sepenuhnya ke **Supabase** (dengan memanfaatkan Edge Functions, RLS, Realtime Chat, dan skema SQL 8 tabel di `backend/supabase/`), ATAU ingin melanjutkan arsitektur mandiri **Node.js Express + Prisma**? Keputusan ini krusial karena saat ini kedua arsitektur saling bertolak belakang dan menyebabkan duplikasi.
-2. **Mitra Payment Gateway yang Direncanakan**:  
-   Di dalam kode terdapat penyebutan Xendit dan Midtrans dalam bentuk komentar. Payment gateway mana yang telah memiliki kontrak/MoU bisnis resmi, dan akun sandbox/production mana yang akan diintegrasikan untuk QRIS, Virtual Account, dan Payout/Disbursement?
-3. **Mekanisme Legalitas dan Rekening Penampung Escrow**:  
-   Apakah penampungan dana escrow akan menggunakan rekening atas nama PT/badan usaha sendiri, atau memanfaatkan akun penampung (*escrow pool account*) resmi dari payment gateway berlisensi PJP (Penyelenggara Jasa Pembayaran) Bank Indonesia?
-4. **Kebijakan Masa Garansi (*Auto-Release Window*)**:  
-   Berapa lama batas waktu tunggu default bagi pembeli untuk memeriksa barang sebelum dana otomatis dicairkan ke penjual (misalnya 2x24 jam atau 3x24 jam), dan apakah timer tersebut berlaku sama untuk produk digital vs barang fisik?
-5. **Skema Biaya Layanan (*Platform Fee*)**:  
-   Di kode mobile terdapat referensi fee 2% dan 2.5%, dengan opsi ditanggung pembeli, penjual, atau dibagi dua (50:50). Bagaimana rumus pasti penetapan fee, berapa batas minimum/maksimum fee per transaksi, dan apakah ada fee penarikan dana (*withdrawal fee*) ke bank?
+1. **Model Bisnis Biaya Platform (Platform Fee):**  
+   Pengaturan default saat ini adalah `fee_percent: 2%` dan `fee_min: Rp 1.000` dengan pembagian biaya `SPLIT` (50% pembeli, 50% penjual). Apakah skema pembagian ini sudah final untuk peluncuran publik?
+2. **Kemitraan Payment Gateway & Izin PJP:**  
+   Apakah entitas legal Rekber telah mengantongi izin Payment Gateway / Mitra Penyelenggara Jasa Pembayaran (PJP) dari Bank Indonesia untuk mengoperasikan rekening penampung dana escrow publik?
+3. **Penyimpanan Dokumen KYC:**  
+   Berdasarkan UU PDP No. 27/2022, berapa lama masa retensi dokumen KTP dan foto selfie pengguna yang ditolak (`REJECTED`) sebelum dihapus permanen oleh background worker?
+4. **Kebijakan Batas Closed Beta:**  
+   Apakah batas closed beta disepakati pada maksimum transaksi Rp 2.000.000 per transaksi dan penarikan harian Rp 5.000.000 sesuai panduan `docs/CHECKLIST_RILIS.md`?
+5. **Rencana Fitur AI Assistant:**  
+   Apakah layar `AiAssistantScreen` akan diintegrasikan dengan API Gemini / Claude untuk layanan bantuan otomatis, atau akan disembunyikan sementara pada rilis versi 1.0?
 
 ---
-
-### Verifikasi Akhir Auditor
-Laporan ini disusun secara faktual, independen, dan objektif berdasarkan inspeksi baris demi baris pada seluruh basis kode backend dan mobile proyek Rekber per tanggal 21 November 2026. Seluruh klaim disertai bukti nomor baris dan path file yang dapat diverifikasi ulang.
+*Laporan ini disusun secara independen berdasarkan audit kode aktual pada repositori Rekber.*
