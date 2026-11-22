@@ -3,6 +3,7 @@
 // =============================================================================
 
 const disputeService = require('../services/dispute.service');
+const auditService = require('../services/audit.service');
 
 /**
  * GET /api/admin/disputes
@@ -47,6 +48,16 @@ const reviewDispute = async (req, res, next) => {
   try {
     const dispute = await disputeService.reviewDispute(req.params.id, req.user.id);
 
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'DISPUTE_REVIEW',
+      targetType: 'DISPUTE',
+      targetId: req.params.id,
+      before: { status: 'OPEN' },
+      after: { status: 'UNDER_REVIEW' },
+      ip: req.ip,
+    });
+
     res.status(200).json({
       success: true,
       message: 'Sengketa sedang ditinjau oleh admin.',
@@ -64,6 +75,20 @@ const reviewDispute = async (req, res, next) => {
 const resolveDispute = async (req, res, next) => {
   try {
     const dispute = await disputeService.resolveDispute(req.params.id, req.user.id, req.body);
+
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'DISPUTE_RESOLVE',
+      targetType: 'DISPUTE',
+      targetId: req.params.id,
+      before: { status: 'UNDER_REVIEW' },
+      after: {
+        status: dispute.status,
+        decision: req.body?.decision,
+        resolutionNote: req.body?.resolutionNote,
+      },
+      ip: req.ip,
+    });
 
     res.status(200).json({
       success: true,
