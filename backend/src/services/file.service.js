@@ -87,8 +87,35 @@ const fileAccessPolicies = {
   },
 
   CHAT_IMAGE: async (file, user) => {
-    // Default: owner + admin (expanded in Prompt 13)
-    return file.ownerId === user.id || user.role === 'ADMIN';
+    // 1. Owner can always access
+    if (file.ownerId === user.id) return true;
+
+    // 2. Find associated chat message and its transaction
+    const message = await prisma.chatMessage.findFirst({
+      where: {
+        fileId: file.id,
+      },
+      include: {
+        transaction: {
+          select: { buyerId: true, sellerId: true, status: true },
+        },
+      },
+    });
+
+    if (message && message.transaction) {
+      const tx = message.transaction;
+      // 3. Buyer or Seller in the associated transaction
+      if (tx.buyerId === user.id || tx.sellerId === user.id) {
+        return true;
+      }
+
+      // 4. Admin ONLY when transaction is in DISPUTED status
+      if (user.role === 'ADMIN' && tx.status === 'DISPUTED') {
+        return true;
+      }
+    }
+
+    return false;
   },
 };
 
@@ -206,6 +233,13 @@ const cleanupOrphanFiles = async () => {
 
     if (candidate.purpose === 'SHIPMENT_PROOF') {
       const count = await prisma.shipmentProof.count({
+        where: {
+          fileIds: { has: candidate.id },
+        },
+      });
+      isReferenced = count > 0;
+    } else if (candidate.purpose === 'DISPUTE_EVIDENCE') {
+      const count = await prisma.disputeEvidence.count({
         where: {
           fileIds: { has: candidate.id },
         },
