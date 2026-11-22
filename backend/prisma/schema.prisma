@@ -108,6 +108,28 @@ enum DisputeStatus {
   RESOLVED_SELLER
 }
 
+/// ChatMessageType defines the type of message in transaction chat
+enum ChatMessageType {
+  TEXT
+  IMAGE
+  SYSTEM
+}
+
+/// UserKycStatus defines verification status of a user
+enum UserKycStatus {
+  NONE
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// KycSubmissionStatus tracks the status of a specific KYC submission
+enum KycSubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // =============================================================================
 // MODELS
 // =============================================================================
@@ -125,6 +147,7 @@ model User {
   firebaseUid String? @unique @map("firebase_uid")
   fcmToken    String? @map("fcm_token")
   isActive    Boolean @default(true) @map("is_active")
+  kycStatus   UserKycStatus @default(NONE) @map("kyc_status")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -144,6 +167,12 @@ model User {
   openedDisputes      Dispute[]            @relation("OpenedDisputes")
   resolvedDisputes    Dispute[]            @relation("ResolvedDisputes")
   disputeEvidences    DisputeEvidence[]
+  notifications       Notification[]
+  chatMessages        ChatMessage[]
+  chatReadStates      ChatReadState[]
+  kycSubmissions      KycSubmission[]      @relation("UserKycSubmissions")
+  reviewedKyc         KycSubmission[]      @relation("ReviewedKycSubmissions")
+  auditLogs           AuditLog[]           @relation("ActorAuditLogs")
 
   @@map("users") // Map to lowercase table name in PostgreSQL
 }
@@ -214,6 +243,8 @@ model Transaction {
   ledgerEntries LedgerEntry[]
   shipmentProof ShipmentProof?
   dispute       Dispute?
+  chatMessages  ChatMessage[]
+  chatReadStates ChatReadState[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -351,6 +382,9 @@ model FileAsset {
   deletedAt  DateTime?   @map("deleted_at")
 
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  chatMessages ChatMessage[]
+  kycIdSubmissions KycSubmission[] @relation("KycIdFiles")
+  kycSelfieSubmissions KycSubmission[] @relation("KycSelfieFiles")
 
   @@index([ownerId, deletedAt])
   @@index([purpose, deletedAt])
@@ -411,6 +445,100 @@ model DisputeEvidence {
   @@index([disputeId, createdAt])
   @@map("dispute_evidences")
 }
+
+/// Notification model stores in-app notifications and tracks read state.
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  type      String
+  title     String
+  body      String    @db.Text
+  data      Json?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+/// ChatMessage records real-time communication messages for an escrow transaction.
+model ChatMessage {
+  id            String          @id @default(uuid())
+  transactionId String          @map("transaction_id")
+  senderId      String?         @map("sender_id") // null for SYSTEM messages
+  type          ChatMessageType @default(TEXT)
+  body          String?         @db.VarChar(2000)
+  fileId        String?         @map("file_id")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  deletedAt     DateTime?       @map("deleted_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  sender      User?       @relation(fields: [senderId], references: [id], onDelete: SetNull)
+  file        FileAsset?  @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([transactionId, createdAt])
+  @@map("chat_messages")
+}
+
+/// ChatReadState tracks the last read timestamp per user per transaction.
+model ChatReadState {
+  transactionId String   @map("transaction_id")
+  userId        String   @map("user_id")
+  lastReadAt    DateTime @default(now()) @map("last_read_at")
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, userId])
+  @@map("chat_read_states")
+}
+
+/// KycSubmission stores identity verification requests with encrypted NIK.
+model KycSubmission {
+  id              String              @id @default(uuid())
+  userId          String              @map("user_id")
+  fullName        String              @map("full_name")
+  nikEnc          String              @map("nik_enc") @db.Text
+  idFileId        String              @map("id_file_id")
+  selfieFileId    String              @map("selfie_file_id")
+  status          KycSubmissionStatus @default(PENDING)
+  rejectionReason String?             @map("rejection_reason") @db.Text
+  reviewedById    String?             @map("reviewed_by_id")
+  reviewedAt      DateTime?           @map("reviewed_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+
+  user       User      @relation("UserKycSubmissions", fields: [userId], references: [id], onDelete: Cascade)
+  reviewedBy User?     @relation("ReviewedKycSubmissions", fields: [reviewedById], references: [id])
+  idFile     FileAsset @relation("KycIdFiles", fields: [idFileId], references: [id])
+  selfieFile FileAsset @relation("KycSelfieFiles", fields: [selfieFileId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("kyc_submissions")
+}
+
+/// AuditLog maintains an immutable trail of administrative actions for compliance and security.
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?  @map("actor_id")
+  action     String
+  targetType String   @map("target_type")
+  targetId   String   @map("target_id")
+  before     Json?
+  after      Json?
+  ip         String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  actor User? @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([targetType, targetId])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
 
 
 
