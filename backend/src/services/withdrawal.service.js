@@ -10,6 +10,7 @@ const { calculateNameMatch } = require('../utils/stringSimilarity');
 const settingsService = require('./settings.service');
 const ledgerService = require('./ledger.service');
 const { getPaymentProvider } = require('../providers/payment');
+const events = require('../notifications/events');
 
 /**
  * Checks whether user is eligible for withdrawal.
@@ -20,6 +21,15 @@ const { getPaymentProvider } = require('../providers/payment');
 const assertCanWithdraw = (user) => {
   if (!user.isActive) {
     throw new ApiError(403, 'Akun Anda dinonaktifkan.');
+  }
+  if (user.kycStatus !== 'APPROVED') {
+    throw new ApiError(403, 'Penarikan dana memerlukan akun yang terverifikasi KYC (APPROVED).');
+  }
+  if (user.kycStatus !== 'APPROVED') {
+    throw new ApiError(
+      403,
+      'Penarikan dana memerlukan akun yang terverifikasi KYC (APPROVED).'
+    );
   }
 };
 
@@ -262,7 +272,7 @@ const cancelWithdrawal = async (id, userId) => {
     throw new ApiError(400, 'Hanya penarikan dengan status PENDING_REVIEW yang dapat dibatalkan.');
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. CAS status update PENDING_REVIEW → CANCELLED
     const updateResult = await tx.withdrawalRequest.updateMany({
       where: { id, userId, status: 'PENDING_REVIEW' },
@@ -291,6 +301,10 @@ const cancelWithdrawal = async (id, userId) => {
       where: { id },
     });
   });
+
+  await events.onWithdrawalStatusChanged(result);
+
+  return result;
 };
 
 /**
@@ -428,6 +442,8 @@ const approveWithdrawal = async (id, adminId) => {
       },
     });
 
+    await events.onWithdrawalStatusChanged(updated);
+
     return updated;
   } catch (error) {
     // If provider call immediately rejects, mark as FAILED and release reserved balance
@@ -477,7 +493,7 @@ const rejectWithdrawal = async (id, adminId, reason = null) => {
     throw new ApiError(400, 'Hanya penarikan dengan status PENDING_REVIEW yang dapat ditolak.');
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // 1. CAS status update PENDING_REVIEW → REJECTED
     const updateResult = await tx.withdrawalRequest.updateMany({
       where: { id, status: 'PENDING_REVIEW' },
@@ -508,6 +524,10 @@ const rejectWithdrawal = async (id, adminId, reason = null) => {
       where: { id },
     });
   });
+
+  await events.onWithdrawalStatusChanged(result);
+
+  return result;
 };
 
 /**
@@ -536,6 +556,12 @@ const handlePayoutWebhook = async (
     });
 
     // Zero new ledger entries: money was already deducted when reserved
+    await events.onWithdrawalStatusChanged({
+      userId: withdrawal.userId,
+      amount: withdrawal.amount,
+      status: 'COMPLETED',
+      id: withdrawal.id,
+    });
     return { success: true, message: 'Penarikan berhasil diselesaikan.' };
   }
 
@@ -558,6 +584,13 @@ const handlePayoutWebhook = async (
         referenceType: 'WITHDRAWAL',
         referenceId: withdrawal.id,
         metadata: { reason: 'PAYOUT_FAILED', failureReason },
+      });
+
+      await events.onWithdrawalStatusChanged({
+        userId: withdrawal.userId,
+        amount: withdrawal.amount,
+        status: 'FAILED',
+        id: withdrawal.id,
       });
     }
 
