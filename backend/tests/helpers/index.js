@@ -17,6 +17,7 @@ const createUser = async ({
   role = 'USER',
   balance = 0,
   isActive = true,
+  kycStatus = 'APPROVED',
   firebaseUid,
   fcmToken,
 } = {}) => {
@@ -33,6 +34,7 @@ const createUser = async ({
       role,
       balance: BigInt(balance),
       isActive,
+      kycStatus,
       firebaseUid,
       fcmToken,
     },
@@ -192,7 +194,7 @@ const createDisputeEvidence = async ({
  */
 const resetDb = async () => {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE "dispute_evidences", "disputes", "shipment_proofs", "file_assets", "platform_settings", "withdrawal_requests", "bank_accounts", "webhook_events", "payment_intents", "ledger_entries", "refresh_tokens", "password_reset_tokens", "transactions", "users" RESTART IDENTITY CASCADE;'
+    'TRUNCATE TABLE "audit_logs", "kyc_submissions", "chat_read_states", "chat_messages", "notifications", "dispute_evidences", "disputes", "shipment_proofs", "file_assets", "platform_settings", "withdrawal_requests", "bank_accounts", "webhook_events", "payment_intents", "ledger_entries", "refresh_tokens", "password_reset_tokens", "transactions", "users" RESTART IDENTITY CASCADE;'
   );
 };
 
