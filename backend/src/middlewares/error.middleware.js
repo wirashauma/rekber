@@ -78,6 +78,12 @@ const errorHandler = (err, req, res, _next) => {
                       : 'INTERNAL_SERVER_ERROR';
   }
 
+  // Report unhandled 5xx server errors to Sentry
+  if (statusCode >= 500) {
+    const { captureException } = require('../config/sentry');
+    captureException(err);
+  }
+
   // Uniform error response (NEVER includes stack trace)
   const response = {
     success: false,
