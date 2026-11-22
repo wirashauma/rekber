@@ -11,9 +11,16 @@ abstract class Failure extends Equatable {
   List<Object?> get props => [message, statusCode];
 }
 
-/// Server-side failures (Supabase, Edge Functions)
+/// Server-side failures (Supabase, Edge Functions, Express)
 class ServerFailure extends Failure {
   const ServerFailure({required super.message, super.statusCode});
+
+  bool get isConflict => statusCode == 409;
+}
+
+/// 409 Conflict Failure specifically for state mismatch/race conditions
+class ConflictFailure extends ServerFailure {
+  const ConflictFailure({required super.message}) : super(statusCode: 409);
 }
 
 /// Local cache/storage failures
