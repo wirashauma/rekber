@@ -42,6 +42,6 @@ module.exports = [
     },
   },
   {
-    ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'prisma/migrations/**', '.env.test'],
+    ignores: ['node_modules/**', 'dist/**', 'coverage/**', 'prisma/migrations/**', '.env.test', 'loadtest/**'],
   },
 ];
