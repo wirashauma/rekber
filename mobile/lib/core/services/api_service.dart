@@ -39,6 +39,17 @@ class ApiService {
 
   static String get baseUrl {
     const envUrl = String.fromEnvironment('API_BASE_URL');
+    if (kReleaseMode) {
+      if (envUrl.isEmpty) {
+        throw StateError(
+            'API_BASE_URL wajib dikonfigurasi saat build release (gunakan --dart-define=API_BASE_URL=https://...).');
+      }
+      if (!envUrl.startsWith('https://')) {
+        throw StateError(
+            'API_BASE_URL harus menggunakan protokol HTTPS pada build release ($envUrl).');
+      }
+      return envUrl;
+    }
     if (envUrl.isNotEmpty) {
       return envUrl;
     }
@@ -192,36 +203,41 @@ class ApiService {
     String method,
     String endpoint, {
     Map<String, dynamic>? body,
+    Map<String, String>? headers,
     bool isRetry = false,
   }) async {
     final uri = Uri.parse('$baseUrl$endpoint');
-    final headers = await _getHeaders();
+    final defaultHeaders = await _getHeaders();
+    final combinedHeaders = {
+      ...defaultHeaders,
+      if (headers != null) ...headers,
+    };
 
     http.Response response;
     try {
       switch (method.toUpperCase()) {
         case 'GET':
           response = await _client
-              .get(uri, headers: headers)
+              .get(uri, headers: combinedHeaders)
               .timeout(const Duration(seconds: 20));
           break;
         case 'POST':
           response = await _client
               .post(uri,
-                  headers: headers,
+                  headers: combinedHeaders,
                   body: body != null ? jsonEncode(body) : null)
               .timeout(const Duration(seconds: 20));
           break;
         case 'PUT':
           response = await _client
               .put(uri,
-                  headers: headers,
+                  headers: combinedHeaders,
                   body: body != null ? jsonEncode(body) : null)
               .timeout(const Duration(seconds: 20));
           break;
         case 'DELETE':
           response = await _client
-              .delete(uri, headers: headers)
+              .delete(uri, headers: combinedHeaders)
               .timeout(const Duration(seconds: 20));
           break;
         default:
@@ -257,27 +273,98 @@ class ApiService {
     if (response.statusCode == 401 && !isRetry && !isAuthEndpoint) {
       final refreshed = await _tryRefreshToken();
       if (refreshed) {
-        return _sendRequest(method, endpoint, body: body, isRetry: true);
+        return _sendRequest(method, endpoint,
+            body: body, headers: headers, isRetry: true);
       }
     }
 
     return _handleResponse(response);
   }
 
-  Future<dynamic> get(String endpoint) async {
-    return _sendRequest('GET', endpoint);
+  Future<dynamic> get(String endpoint, {Map<String, String>? headers}) async {
+    return _sendRequest('GET', endpoint, headers: headers);
   }
 
-  Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
-    return _sendRequest('POST', endpoint, body: body);
+  Future<dynamic> post(String endpoint, Map<String, dynamic> body,
+      {Map<String, String>? headers}) async {
+    return _sendRequest('POST', endpoint, body: body, headers: headers);
   }
 
-  Future<dynamic> put(String endpoint, Map<String, dynamic> body) async {
-    return _sendRequest('PUT', endpoint, body: body);
+  Future<dynamic> put(String endpoint, Map<String, dynamic> body,
+      {Map<String, String>? headers}) async {
+    return _sendRequest('PUT', endpoint, body: body, headers: headers);
   }
 
-  Future<dynamic> delete(String endpoint) async {
-    return _sendRequest('DELETE', endpoint);
+  Future<dynamic> delete(String endpoint,
+      {Map<String, String>? headers}) async {
+    return _sendRequest('DELETE', endpoint, headers: headers);
+  }
+
+  Future<dynamic> postMultipart(
+    String endpoint, {
+    required String fieldName,
+    required String filePath,
+    Map<String, String>? fields,
+    Map<String, String>? headers,
+    bool isRetry = false,
+  }) async {
+    final uri = Uri.parse('$baseUrl$endpoint');
+    final token = await getAccessToken();
+
+    try {
+      final request = http.MultipartRequest('POST', uri);
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      if (headers != null) {
+        request.headers.addAll(headers);
+      }
+      if (fields != null) {
+        request.fields.addAll(fields);
+      }
+      request.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
+
+      final streamedResponse =
+          await _client.send(request).timeout(const Duration(seconds: 30));
+      final response = await http.Response.fromStream(streamedResponse);
+
+      final isAuthEndpoint = endpoint.startsWith('/auth/login') ||
+          endpoint.startsWith('/auth/refresh') ||
+          endpoint.startsWith('/auth/register');
+
+      if (response.statusCode == 401 && !isRetry && !isAuthEndpoint) {
+        final refreshed = await _tryRefreshToken();
+        if (refreshed) {
+          return postMultipart(
+            endpoint,
+            fieldName: fieldName,
+            filePath: filePath,
+            fields: fields,
+            headers: headers,
+            isRetry: true,
+          );
+        }
+      }
+
+      return _handleResponse(response);
+    } on TimeoutException {
+      throw ApiException(
+        statusCode: 408,
+        message: 'Koneksi time out saat mengunggah berkas.',
+      );
+    } on SocketException {
+      throw ApiException(
+        statusCode: 503,
+        message:
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+      );
+    } on http.ClientException {
+      throw ApiException(
+        statusCode: 503,
+        message:
+            'Tidak dapat terhubung ke server. Periksa koneksi internet Anda.',
+      );
+    }
   }
 
   void dispose() {
