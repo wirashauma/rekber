@@ -6,7 +6,9 @@ const express = require('express');
 const router = express.Router();
 const transactionController = require('../controllers/transaction.controller');
 const disputeController = require('../controllers/dispute.controller');
+const chatController = require('../controllers/chat.controller');
 const { authenticate } = require('../middlewares/auth.middleware');
+const { chatMessageLimiter } = require('../middlewares/chatRateLimit.middleware');
 const {
   createTransactionRules,
   updateStatusRules,
@@ -14,6 +16,11 @@ const {
 } = require('../validators/transaction.validator');
 const { submitShipmentRules } = require('../validators/shipment.validator');
 const { openDisputeRules, getTransactionDisputeRules } = require('../validators/dispute.validator');
+const {
+  getMessagesRules,
+  sendMessageRules,
+  markReadRules,
+} = require('../validators/chat.validator');
 const { validate } = require('../middlewares/validate.middleware');
 
 // All transaction routes require authentication
@@ -65,5 +72,27 @@ router.put(
   validate,
   transactionController.updateTransactionStatus
 );
+
+// =============================================================================
+// Chat & Messaging Routes (Prompt 13)
+// =============================================================================
+
+// GET /api/transactions/:id/messages
+// Retrieve paginated messages (participants and admin when DISPUTED)
+router.get('/:id/messages', getMessagesRules, validate, chatController.getMessages);
+
+// POST /api/transactions/:id/messages
+// Send a new message (TEXT or IMAGE, 20 msgs/min rate limit, non-terminal only)
+router.post(
+  '/:id/messages',
+  chatMessageLimiter,
+  sendMessageRules,
+  validate,
+  chatController.sendMessage
+);
+
+// POST /api/transactions/:id/messages/read
+// Mark transaction messages as read
+router.post('/:id/messages/read', markReadRules, validate, chatController.markAsRead);
 
 module.exports = router;
