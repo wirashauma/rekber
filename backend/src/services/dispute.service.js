@@ -11,6 +11,7 @@ const {
   DISPUTE_DECISION,
   MAX_EVIDENCE_PER_PARTY,
 } = require('../constants/dispute');
+const events = require('../notifications/events');
 
 /**
  * Standard select fields for user references
@@ -104,7 +105,7 @@ const openDispute = async (transactionId, userId, { reason, description, fileIds
   }
 
   // 7. Execute atomically in a single DB transaction
-  return await prisma.$transaction(async (tx) => {
+  const dispute = await prisma.$transaction(async (tx) => {
     // Check if dispute already exists for this transaction
     const existingDispute = await tx.dispute.findUnique({
       where: { transactionId },
@@ -175,6 +176,10 @@ const openDispute = async (transactionId, userId, { reason, description, fileIds
 
     return dispute;
   });
+
+  await events.onTransactionDisputed(dispute.transaction, dispute);
+
+  return dispute;
 };
 
 /**
@@ -528,7 +533,7 @@ const resolveDispute = async (disputeId, adminId, { decision, note }) => {
     throw new ApiError(400, 'Catatan resolusi sengketa minimal 10 karakter.');
   }
 
-  return await prisma.$transaction(async (tx) => {
+  const resolvedDispute = await prisma.$transaction(async (tx) => {
     // 1. Fetch dispute and check status
     const dispute = await tx.dispute.findUnique({
       where: { id: disputeId },
@@ -594,6 +599,10 @@ const resolveDispute = async (disputeId, adminId, { decision, note }) => {
       },
     });
   });
+
+  await events.onDisputeResolved(resolvedDispute.transaction, resolvedDispute, decision);
+
+  return resolvedDispute;
 };
 
 module.exports = {
