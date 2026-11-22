@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
-import '../../../../core/widgets/brutal_skeleton.dart';
 import '../../../../injection_container.dart';
 import '../../../../core/services/api_service.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
@@ -20,8 +19,6 @@ class EditProfileScreen extends StatefulWidget {
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  bool isLoading = false;
   bool _isSubmitting = false;
 
   @override
@@ -31,7 +28,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (authState is AuthAuthenticated) {
       _nameController.text = authState.user.fullName;
       _emailController.text = authState.user.email;
-      _phoneController.text = authState.user.phone ?? '';
     }
   }
 
@@ -39,7 +35,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
@@ -59,6 +54,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         'name': name,
       });
 
+      if (!mounted) return;
       context.read<AuthBloc>().add(AuthCheckRequested());
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -69,6 +65,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
       Navigator.pop(context);
     } on ApiException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Gagal memperbarui profil: ${e.message}', style: const TextStyle(fontWeight: FontWeight.bold)),
@@ -76,6 +73,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       );
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Terjadi kesalahan koneksi.', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -83,7 +81,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ),
       );
     } finally {
-      setState(() => _isSubmitting = false);
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -117,105 +115,56 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 20),
-            // Profile Picture Placeholder
-            isLoading
-                ? const BrutalSkeleton(width: 120, height: 120, borderRadius: 60)
-                : Center(
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: AppColors.paleYellow,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: AppColors.black, width: 3.0),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: AppColors.black,
-                                offset: Offset(4, 4),
-                                blurRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.person_rounded,
-                            size: 60,
-                            color: AppColors.black,
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: BrutalistBounce(
-                            onTap: () {
-                              // Pick Image Logic
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppColors.neonGreen,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppColors.black, width: 2.0),
-                              ),
-                              child: const Icon(
-                                Icons.edit_rounded,
-                                size: 20,
-                                color: AppColors.black,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-            const SizedBox(height: 40),
-            
-            if (isLoading)
-              ...List.generate(3, (index) => const Padding(
-                padding: EdgeInsets.only(bottom: 24),
-                child: BrutalSkeleton(width: double.infinity, height: 56),
-              ))
-            else ...[
-              _buildLabel('Nama Lengkap'),
-              BrutalistTextField(
-                controller: _nameController,
-                hintText: 'Masukkan nama lengkap',
-                prefixIcon: Icons.person_outline_rounded,
+            const SizedBox(height: 12),
+            _buildLabel('Nama Lengkap'),
+            BrutalistTextField(
+              controller: _nameController,
+              hintText: 'Masukkan nama lengkap',
+              prefixIcon: Icons.person_outline_rounded,
+            ),
+            const SizedBox(height: 24),
+
+            _buildLabel('Email (Tidak Dapat Diubah)'),
+            TextFormField(
+              controller: _emailController,
+              enabled: false,
+              style: GoogleFonts.spaceGrotesk(
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[700],
               ),
-              const SizedBox(height: 24),
-              
-              _buildLabel('Email'),
-              BrutalistTextField(
-                controller: _emailController,
-                hintText: 'Masukkan email aktif',
-                prefixIcon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                prefixIcon: const Icon(Icons.email_outlined, color: Colors.grey),
+                filled: true,
+                fillColor: Colors.grey[200],
+                border: const OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide(color: AppColors.black, width: 2.0),
+                ),
+                disabledBorder: const OutlineInputBorder(
+                  borderRadius: BorderRadius.zero,
+                  borderSide: BorderSide(color: Colors.grey, width: 2.0),
+                ),
               ),
-              const SizedBox(height: 24),
-              
-              _buildLabel('Nomor Telepon'),
-              BrutalistTextField(
-                controller: _phoneController,
-                hintText: 'Contoh: 08123456789',
-                prefixIcon: Icons.phone_android_rounded,
-                keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Email terhubung dengan identitas akun Anda.',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
               ),
-            ],
-            
+            ),
             const SizedBox(height: 48),
-            
-            isLoading
-                ? const BrutalSkeleton(width: double.infinity, height: 56)
-                : BrutalistButton(
-                    text: 'SIMPAN PERUBAHAN',
-                    isLoading: _isSubmitting,
-                    onPressed: _isSubmitting ? () {} : _saveProfile,
-                    backgroundColor: AppColors.neonGreen,
-                  ),
+
+            BrutalistButton(
+              text: 'SIMPAN PERUBAHAN',
+              isLoading: _isSubmitting,
+              onPressed: _isSubmitting ? () {} : _saveProfile,
+              backgroundColor: AppColors.neonGreen,
+            ),
           ],
         ),
       ),
@@ -225,15 +174,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0, left: 4),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          text.toUpperCase(),
-          style: GoogleFonts.spaceGrotesk(
-            fontWeight: FontWeight.w900,
-            fontSize: 14,
-            color: AppColors.black,
-          ),
+      child: Text(
+        text.toUpperCase(),
+        style: GoogleFonts.spaceGrotesk(
+          fontWeight: FontWeight.w900,
+          fontSize: 13,
+          color: AppColors.black,
         ),
       ),
     );
