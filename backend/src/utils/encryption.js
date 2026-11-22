@@ -89,8 +89,22 @@ const maskAccountNumber = (accountNumber) => {
   return `${maskedPrefix}${last4}`;
 };
 
+/**
+ * Masks a 16-digit NIK, displaying first 4 and last 4 digits: e.g. "3171********0001".
+ *
+ * @param {string} nik - 16-digit NIK string
+ * @returns {string}
+ */
+const maskNik = (nik) => {
+  if (!nik || typeof nik !== 'string') return '••••••••••••••••';
+  const clean = nik.replace(/\s+/g, '');
+  if (clean.length < 8) return '•'.repeat(clean.length);
+  return `${clean.slice(0, 4)}********${clean.slice(-4)}`;
+};
+
 module.exports = {
   encrypt,
   decrypt,
   maskAccountNumber,
+  maskNik,
 };
