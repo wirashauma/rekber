@@ -10,6 +10,7 @@ const { parseInteger } = require('../utils/money');
 const { logger } = require('../config/logger');
 const ledgerService = require('./ledger.service');
 const { getPaymentProvider } = require('../providers/payment');
+const events = require('../notifications/events');
 
 /**
  * Creates a top-up payment intent and requests credentials from the payment provider.
@@ -182,7 +183,9 @@ const processWebhook = async ({ providerName, headers, rawBody }) => {
   }
 
   // 4. Atomic processing within database transaction
-  return await prisma.$transaction(async (tx) => {
+  let paidIntentForNotification = null;
+
+  const result = await prisma.$transaction(async (tx) => {
     // Check if webhook is for a withdrawal payout
     const withdrawal = await tx.withdrawalRequest.findUnique({
       where: { id: referenceId },
@@ -295,6 +298,8 @@ const processWebhook = async ({ providerName, headers, rawBody }) => {
           where: { eventId },
           data: { status: 'PROCESSED', processedAt: new Date() },
         });
+
+        paidIntentForNotification = intent;
       }
 
       return { success: true, message: 'Top-up berhasil diselesaikan.' };
@@ -330,6 +335,12 @@ const processWebhook = async ({ providerName, headers, rawBody }) => {
 
     return { success: true, message: `Status event tidak diproses: ${status}` };
   });
+
+  if (paidIntentForNotification) {
+    await events.onTopUpPaid(paidIntentForNotification);
+  }
+
+  return result;
 };
 
 /**
