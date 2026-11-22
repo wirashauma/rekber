@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
@@ -225,6 +227,206 @@ void main() {
       expect(await service.getRefreshToken(), isNull);
 
       await sub.cancel();
+      service.dispose();
+    });
+
+    test('HTTP GET, POST, PUT, DELETE return decoded JSON when response is 200', () async {
+      final mockClient = MockClient((request) async {
+        final body = request.body.isNotEmpty ? jsonDecode(request.body) : {};
+        if (request.method == 'GET') {
+          return http.Response(jsonEncode({'method': 'GET', 'data': 'ok'}), 200);
+        } else if (request.method == 'POST') {
+          return http.Response(jsonEncode({'method': 'POST', 'echo': body}), 201);
+        } else if (request.method == 'PUT') {
+          return http.Response(jsonEncode({'method': 'PUT', 'echo': body}), 200);
+        } else if (request.method == 'DELETE') {
+          return http.Response(jsonEncode({'method': 'DELETE', 'success': true}), 200);
+        }
+        return http.Response('Not Found', 404);
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+
+      final getRes = await service.get('/test');
+      expect(getRes['data'], equals('ok'));
+
+      final postRes = await service.post('/test', {'foo': 'bar'});
+      expect(postRes['echo']['foo'], equals('bar'));
+
+      final putRes = await service.put('/test', {'foo': 'baz'});
+      expect(putRes['echo']['foo'], equals('baz'));
+
+      final delRes = await service.delete('/test');
+      expect(delRes['success'], isTrue);
+
+      service.dispose();
+    });
+
+    test('HTTP non-200 throws ApiException with parsed message', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(
+          jsonEncode({'message': 'Data tidak valid.', 'code': 'BAD_REQUEST'}),
+          400,
+        );
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+
+      expect(
+        () => service.get('/bad-request'),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'statusCode', 400)),
+      );
+
+      service.dispose();
+    });
+
+    test('HTTP network failure throws ApiException with status 503', () async {
+      final mockClient = MockClient((request) async {
+        throw http.ClientException('Network unreachable');
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+
+      expect(
+        () => service.get('/network-fail'),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'statusCode', 503)),
+      );
+
+      service.dispose();
+    });
+
+    test('401 triggers successful refresh and retries original request', () async {
+      await storage.write(key: 'access_token', value: 'old_token');
+      await storage.write(key: 'refresh_token', value: 'valid_refresh');
+
+      int attempts = 0;
+      final mockClient = MockClient((request) async {
+        if (request.url.path.endsWith('/auth/refresh')) {
+          return http.Response(jsonEncode({
+            'success': true,
+            'data': {
+              'accessToken': 'refreshed_access',
+              'refreshToken': 'refreshed_refresh',
+            }
+          }), 200);
+        }
+        attempts++;
+        if (attempts == 1) {
+          return http.Response(jsonEncode({'message': 'Expired'}), 401);
+        }
+        return http.Response(jsonEncode({'message': 'Success on retry', 'data': {'ok': true}}), 200);
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+      final res = await service.get('/protected');
+      expect(res['data']['ok'], isTrue);
+      expect(await service.getAccessToken(), equals('refreshed_access'));
+      service.dispose();
+    });
+
+    test('401 on /auth/login throws directly without refresh attempt', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(jsonEncode({'message': 'Invalid credentials'}), 401);
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+      expect(
+        () => service.post('/auth/login', {'email': 'a@b.com', 'password': '123'}),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'statusCode', 401)),
+      );
+      service.dispose();
+    });
+
+    test('Empty body on 200 returns null', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response('', 204);
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+      final res = await service.get('/empty');
+      expect(res, isNull);
+      service.dispose();
+    });
+
+    test('Error response with errors field and malformed body', () async {
+      final mockClient = MockClient((request) async {
+        if (request.url.path.contains('/errors-field')) {
+          return http.Response(
+            jsonEncode({
+              'error': 'Validasi gagal',
+              'errors': {'email': 'Email tidak valid'}
+            }),
+            422,
+          );
+        }
+        return http.Response('<html>Server error</html>', 500);
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+
+      expect(
+        () => service.get('/errors-field'),
+        throwsA(isA<ApiException>()
+            .having((e) => e.statusCode, 'statusCode', 422)
+            .having((e) => e.message, 'message', 'Validasi gagal')),
+      );
+
+      expect(
+        () => service.get('/html-error'),
+        throwsA(isA<ApiException>()
+            .having((e) => e.statusCode, 'statusCode', 500)
+            .having((e) => e.message, 'message', 'Terjadi kesalahan pada server.')),
+      );
+
+      service.dispose();
+    });
+
+    test('postMultipart sends multipart file and handles response', () async {
+      final mockClient = MockClient((request) async {
+        return http.Response(jsonEncode({'data': {'id': 'uploaded-1'}}), 200);
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+      await storage.write(key: 'access_token', value: 'token-123');
+
+      final tempDir = await Directory.systemTemp.createTemp();
+      final tempFile = File('${tempDir.path}/test.png')..writeAsStringSync('dummy content');
+
+      final res = await service.postMultipart(
+        '/upload',
+        fieldName: 'file',
+        filePath: tempFile.path,
+        fields: {'type': 'PROOF'},
+      );
+
+      expect(res['data']['id'], equals('uploaded-1'));
+      service.dispose();
+      await tempDir.delete(recursive: true);
+    });
+
+    test('SocketException throws ApiException with status 503', () async {
+      final mockClient = MockClient((request) async {
+        throw const SocketException('No route to host');
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+      expect(
+        () => service.get('/socket-fail'),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'statusCode', 503)),
+      );
+      service.dispose();
+    });
+
+    test('TimeoutException throws ApiException with status 408', () async {
+      final mockClient = MockClient((request) async {
+        throw TimeoutException('Request timed out');
+      });
+
+      final service = ApiService(client: mockClient, storage: storage);
+      expect(
+        () => service.get('/timeout-fail'),
+        throwsA(isA<ApiException>().having((e) => e.statusCode, 'statusCode', 408)),
+      );
       service.dispose();
     });
   });
