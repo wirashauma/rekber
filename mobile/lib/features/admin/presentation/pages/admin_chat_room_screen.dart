@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/widgets/brutalist_widgets.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_state.dart';
+import '../../../chat/domain/entities/chat_message_entity.dart';
+import '../../../chat/presentation/bloc/chat_bloc.dart';
 
 class AdminChatRoomScreen extends StatefulWidget {
   final String txid;
@@ -15,48 +20,49 @@ class AdminChatRoomScreen extends StatefulWidget {
 
 class _AdminChatRoomScreenState extends State<AdminChatRoomScreen> {
   final TextEditingController _messageController = TextEditingController();
-  final List<Map<String, dynamic>> _messages = [
-    {
-      'sender': 'Pembeli',
-      'text': 'Gan, paketnya kok isinya cuma kardus kosong?',
-      'time': '10:00',
-      'isAdmin': false,
-    },
-    {
-      'sender': 'Penjual',
-      'text': 'Waduh, saya sudah kirim sesuai pesanan mas. Ada video unboxing?',
-      'time': '10:05',
-      'isAdmin': false,
-    },
-    {
-      'sender': 'Pembeli',
-      'text': 'Ada ini, sebentar saya upload.',
-      'time': '10:07',
-      'isAdmin': false,
-    },
-    {
-      'sender': 'PENGUMUMAN ADMIN',
-      'text': 'Admin telah memasuki percakapan. Harap kedua pihak memberikan bukti yang diperlukan.',
-      'time': '11:00',
-      'isAdmin': true,
-    },
-  ];
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<ChatBloc>().add(ChatStarted(transactionId: widget.txid));
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      if (_scrollController.position.pixels >=
+          _scrollController.position.maxScrollExtent - 150) {
+        context.read<ChatBloc>().add(ChatLoadMoreRequested(transactionId: widget.txid));
+      }
+    }
+  }
 
   void _sendMessage() {
-    if (_messageController.text.trim().isEmpty) return;
-    setState(() {
-      _messages.add({
-        'sender': 'PENGUMUMAN ADMIN',
-        'text': _messageController.text.trim(),
-        'time': 'Sekarang',
-        'isAdmin': true,
-      });
-      _messageController.clear();
-    });
+    final text = _messageController.text.trim();
+    if (text.isEmpty) return;
+
+    context.read<ChatBloc>().add(ChatTextMessageSent(
+          transactionId: widget.txid,
+          body: text,
+        ));
+    _messageController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentUserId = () {
+      final auth = context.read<AuthBloc>().state;
+      return auth is AuthAuthenticated ? auth.user.id : null;
+    }();
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -65,59 +71,107 @@ class _AdminChatRoomScreenState extends State<AdminChatRoomScreen> {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'INTERVENSI - ${widget.txid}',
+          'INSPEKSI - ${widget.txid}',
           style: GoogleFonts.spaceGrotesk(
             fontWeight: FontWeight.w900,
-            fontSize: 16,
+            fontSize: 15,
             color: Colors.white,
           ),
         ),
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.redAccent,
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline, color: Colors.white),
-            onPressed: () {},
-          ),
-        ],
       ),
       body: Column(
         children: [
-          // ── INFO BANNER ──
+          // ── INFO BANNER ADMIN ──
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: Colors.black,
-            child: Text(
-              'MODE INTERVENSI: Pesan Anda akan ditandai sebagai PENGUMUMAN RESMI.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.spaceGrotesk(
-                color: Colors.yellowAccent,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-              ),
+            child: Row(
+              children: [
+                const Icon(Icons.shield_rounded, color: Colors.yellowAccent, size: 20),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'MODE INSPEKSI ADMIN: Pengawasan percakapan sengketa realtime.',
+                    style: GoogleFonts.spaceGrotesk(
+                      color: Colors.yellowAccent,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // ── CHAT LIST ──
+          // ── REALTIME CHAT LIST FROM CHAT BLOC ──
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                final msg = _messages[index];
-                return _buildChatBubble(msg);
+            child: BlocBuilder<ChatBloc, ChatState>(
+              builder: (context, state) {
+                if (state.isLoading && state.messages.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (state.errorMessage != null && state.messages.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Text(
+                        state.errorMessage ?? 'Gagal memuat pesan sengketa.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  );
+                }
+
+                final messages = state.messages;
+
+                if (messages.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'Belum ada percakapan dalam transaksi ini.',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  );
+                }
+
+                final hasMore = state.nextCursor != null;
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  reverse: true,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length + (hasMore ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == messages.length) {
+                      return const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      );
+                    }
+                    final msg = messages[index];
+                    return _buildMessageItem(msg, currentUserId);
+                  },
+                );
               },
             ),
           ),
 
-          // ── INPUT AREA ──
+          // ── INPUT PESAN ADMIN ──
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(12),
             decoration: const BoxDecoration(
               color: Colors.white,
               border: Border(
-                top: BorderSide(color: AppColors.black, width: 3),
+                top: BorderSide(color: AppColors.black, width: 2.5),
               ),
             ),
             child: SafeArea(
@@ -126,37 +180,32 @@ class _AdminChatRoomScreenState extends State<AdminChatRoomScreen> {
                   Expanded(
                     child: Container(
                       decoration: BoxDecoration(
-                        color: Colors.yellowAccent.withValues(alpha: 0.3),
+                        color: Colors.yellowAccent.withValues(alpha: 0.25),
                         border: Border.all(color: AppColors.black, width: 2),
                       ),
                       child: TextField(
                         controller: _messageController,
-                        style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700),
+                        style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, fontSize: 13),
                         decoration: InputDecoration(
-                          hintText: 'Tulis pesan admin...',
-                          hintStyle: GoogleFonts.spaceGrotesk(color: Colors.grey[600]),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          hintText: 'Kirim pengumuman/arahan admin...',
+                          hintStyle: GoogleFonts.spaceGrotesk(color: Colors.grey[600], fontSize: 12),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                           border: InputBorder.none,
                         ),
+                        onSubmitted: (_) => _sendMessage(),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   BrutalistBounce(
                     onTap: _sendMessage,
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.black,
-                        border: Border.all(color: AppColors.black, width: 2),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.grey,
-                            offset: Offset(2, 2),
-                          ),
-                        ],
+                        border: Border.all(color: Colors.black, width: 2),
                       ),
-                      child: const Icon(Icons.send_rounded, color: Colors.white),
+                      child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                     ),
                   ),
                 ],
@@ -168,74 +217,69 @@ class _AdminChatRoomScreenState extends State<AdminChatRoomScreen> {
     );
   }
 
-  Widget _buildChatBubble(Map<String, dynamic> msg) {
-    final isAdmin = msg['isAdmin'] as bool;
-    
-    return Column(
-      crossAxisAlignment: isAdmin ? CrossAxisAlignment.center : CrossAxisAlignment.start,
-      children: [
-        if (!isAdmin)
-          Padding(
-            padding: const EdgeInsets.only(left: 4, bottom: 4),
-            child: Text(
-              msg['sender'],
+  Widget _buildMessageItem(ChatMessageEntity msg, String? currentUserId) {
+    if (msg.isSystem) {
+      return Container(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          border: Border.all(color: AppColors.black, width: 1.5),
+        ),
+        child: Text(
+          '[SISTEM] ${msg.body ?? ""}',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.spaceGrotesk(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey[800],
+          ),
+        ),
+      );
+    }
+
+    final isMe = currentUserId != null && msg.senderId == currentUserId;
+
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.78,
+        ),
+        decoration: BoxDecoration(
+          color: isMe ? Colors.yellowAccent : AppColors.white,
+          border: Border.all(color: AppColors.black, width: 2),
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.black,
+              offset: Offset(2, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              isMe ? 'ADMIN' : (msg.senderName ?? 'User'),
               style: GoogleFonts.spaceGrotesk(
                 fontSize: 10,
                 fontWeight: FontWeight.w900,
-                color: Colors.black54,
+                color: isMe ? Colors.red[900] : Colors.blue[900],
               ),
             ),
-          ),
-        Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          constraints: BoxConstraints(
-            maxWidth: MediaQuery.of(context).size.width * (isAdmin ? 0.9 : 0.75),
-          ),
-          child: BrutalistCard(
-            backgroundColor: isAdmin ? Colors.yellowAccent : Colors.white,
-            padding: const EdgeInsets.all(12),
-            borderRadius: 4,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isAdmin)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    color: Colors.black,
-                    child: Text(
-                      'PENGUMUMAN ADMIN',
-                      style: GoogleFonts.spaceGrotesk(
-                        color: Colors.white,
-                        fontSize: 8,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-                Text(
-                  msg['text'],
-                  style: GoogleFonts.spaceGrotesk(
-                    fontWeight: isAdmin ? FontWeight.w900 : FontWeight.w700,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Align(
-                  alignment: Alignment.bottomRight,
-                  child: Text(
-                    msg['time'],
-                    style: GoogleFonts.spaceGrotesk(
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                ),
-              ],
+            const SizedBox(height: 4),
+            Text(
+              msg.body ?? '',
+              style: GoogleFonts.spaceGrotesk(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
