@@ -3,6 +3,7 @@
 // =============================================================================
 
 const withdrawalService = require('../services/withdrawal.service');
+const auditService = require('../services/audit.service');
 
 /**
  * GET /api/admin/withdrawals
@@ -36,6 +37,16 @@ const approveWithdrawal = async (req, res, next) => {
     const { id } = req.params;
     const result = await withdrawalService.approveWithdrawal(id, req.user.id);
 
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'WITHDRAWAL_APPROVE',
+      targetType: 'WITHDRAWAL_REQUEST',
+      targetId: id,
+      before: { status: 'PENDING_REVIEW' },
+      after: { status: result.status },
+      ip: req.ip,
+    });
+
     res.status(200).json({
       success: true,
       message: 'Permintaan penarikan berhasil disetujui dan sedang diproses.',
@@ -55,6 +66,16 @@ const rejectWithdrawal = async (req, res, next) => {
     const { id } = req.params;
     const { reason } = req.body;
     const result = await withdrawalService.rejectWithdrawal(id, req.user.id, reason);
+
+    await auditService.log({
+      actorId: req.user.id,
+      action: 'WITHDRAWAL_REJECT',
+      targetType: 'WITHDRAWAL_REQUEST',
+      targetId: id,
+      before: { status: 'PENDING_REVIEW' },
+      after: { status: 'REJECTED', reason },
+      ip: req.ip,
+    });
 
     res.status(200).json({
       success: true,
