@@ -54,6 +54,7 @@ const authenticate = async (req, res, next) => {
         role: true,
         isActive: true,
         balance: true,
+        kycStatus: true,
       },
     });
 
