@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/widgets/brutalist_widgets.dart';
+import '../../../../core/widgets/brutal_skeleton.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../injection_container.dart';
+import '../../domain/repositories/admin_repository.dart';
+import '../cubit/admin_cubit.dart';
+import '../cubit/admin_state.dart';
 
 class AdminKycScreen extends StatefulWidget {
   const AdminKycScreen({super.key});
@@ -11,7 +17,282 @@ class AdminKycScreen extends StatefulWidget {
 }
 
 class _AdminKycScreenState extends State<AdminKycScreen> {
-  String selectedFilter = 'Menunggu';
+  String selectedFilter = 'PENDING';
+
+  final List<String> filters = ['PENDING', 'APPROVED', 'REJECTED', 'Semua'];
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<AdminCubit>().loadKycSubmissions(status: selectedFilter);
+  }
+
+  void _onFilterChanged(String filter) {
+    setState(() => selectedFilter = filter);
+    context.read<AdminCubit>().loadKycSubmissions(status: filter);
+  }
+
+  void _showDocumentDetail(BuildContext context, String kycId) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final result = await sl<AdminRepository>().getKycDetail(kycId);
+    if (!context.mounted) return;
+    Navigator.pop(context); // Close loading dialog
+
+    result.fold(
+      (failure) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(failure.message, style: const TextStyle(fontWeight: FontWeight.bold)),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      },
+      (data) {
+        _showDetailModal(context, data);
+      },
+    );
+  }
+
+  void _showDetailModal(BuildContext context, Map<String, dynamic> data) {
+    final fullName = data['fullName'] ?? '-';
+    final nikMasked = data['nikMasked'] ?? '••••••••••••••••';
+    final status = data['status'] ?? 'PENDING';
+    final rejectionReason = data['rejectionReason'];
+    final idFileUrl = data['idFileUrl'] as String?;
+    final selfieFileUrl = data['selfieFileUrl'] as String?;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.white,
+      shape: const RoundedRectangleBorder(
+        side: BorderSide(color: AppColors.black, width: 3),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        minChildSize: 0.5,
+        expand: false,
+        builder: (_, scrollCtrl) {
+          return SingleChildScrollView(
+            controller: scrollCtrl,
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'DOKUMEN KYC',
+                      style: GoogleFonts.spaceGrotesk(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: AppColors.black),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildInfoRow('Nama Lengkap:', fullName),
+                _buildInfoRow('NIK (Masked):', nikMasked),
+                _buildInfoRow('Status Pengajuan:', status),
+                if (rejectionReason != null)
+                  _buildInfoRow('Alasan Penolakan:', rejectionReason.toString()),
+                const SizedBox(height: 20),
+                Text(
+                  'FOTO KTP ASLI',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildImagePreview(idFileUrl),
+                const SizedBox(height: 20),
+                Text(
+                  'FOTO SELFIE DENGAN KTP',
+                  style: GoogleFonts.spaceGrotesk(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildImagePreview(selfieFileUrl),
+                const SizedBox(height: 24),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildImagePreview(String? url) {
+    if (url == null || url.isEmpty) {
+      return Container(
+        height: 180,
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          border: Border.all(color: AppColors.black, width: 2),
+        ),
+        child: const Center(
+          child: Text('Tautan gambar tidak tersedia'),
+        ),
+      );
+    }
+
+    return Container(
+      height: 220,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.black12,
+        border: Border.all(color: AppColors.black, width: 2),
+      ),
+      child: Image.network(
+        url,
+        fit: BoxFit.contain,
+        loadingBuilder: (_, child, progress) {
+          if (progress == null) return child;
+          return const Center(child: CircularProgressIndicator());
+        },
+        errorBuilder: (_, __, ___) => const Center(
+          child: Icon(Icons.broken_image_rounded, size: 48, color: Colors.grey),
+        ),
+      ),
+    );
+  }
+
+  void _showApproveConfirmation(BuildContext context, String kycId, String name) {
+    final cubit = context.read<AdminCubit>();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: AppColors.black, width: 3),
+        ),
+        title: Text(
+          'SETUJUI KYC',
+          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w900),
+        ),
+        content: Text(
+          'Apakah Anda yakin menyetujui verifikasi identitas untuk "$name"? Status user akan menjadi APPROVED.',
+          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'BATAL',
+              style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+            ),
+          ),
+          BrutalistButton(
+            text: 'YA, SETUJUI',
+            backgroundColor: AppColors.tealGreen,
+            textColor: AppColors.white,
+            height: 40,
+            width: 130,
+            onPressed: () {
+              Navigator.pop(ctx);
+              cubit.approveKyc(kycId, currentFilter: selectedFilter);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRejectDialog(BuildContext context, String kycId, String name) {
+    final cubit = context.read<AdminCubit>();
+    final reasonController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: const RoundedRectangleBorder(
+          side: BorderSide(color: AppColors.black, width: 3),
+        ),
+        title: Text(
+          'TOLAK VERIFIKASI KYC',
+          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w900, fontSize: 16),
+        ),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'User: $name',
+                style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: reasonController,
+                maxLines: 3,
+                style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.bold),
+                validator: (val) {
+                  final text = (val ?? '').trim();
+                  if (text.isEmpty) return 'Alasan penolakan wajib diisi.';
+                  if (text.length < 5) return 'Alasan minimal 5 karakter.';
+                  return null;
+                },
+                decoration: InputDecoration(
+                  hintText: 'Contoh: Foto KTP blur/tidak terbaca jelas...',
+                  hintStyle: GoogleFonts.spaceGrotesk(fontSize: 12, color: Colors.grey),
+                  filled: true,
+                  fillColor: AppColors.white,
+                  border: const OutlineInputBorder(
+                    borderRadius: BorderRadius.zero,
+                    borderSide: BorderSide(color: AppColors.black, width: 2),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'BATAL',
+              style: GoogleFonts.spaceGrotesk(color: AppColors.textSecondary, fontWeight: FontWeight.bold),
+            ),
+          ),
+          BrutalistButton(
+            text: 'TOLAK KYC',
+            backgroundColor: Colors.redAccent,
+            textColor: AppColors.white,
+            height: 40,
+            width: 120,
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                final reason = reasonController.text.trim();
+                Navigator.pop(ctx);
+                cubit.rejectKyc(
+                      id: kycId,
+                      reason: reason,
+                      currentFilter: selectedFilter,
+                    );
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +307,7 @@ class _AdminKycScreenState extends State<AdminKycScreen> {
             color: AppColors.white,
           ),
         ),
-        backgroundColor: Colors.blue,
+        backgroundColor: Colors.blueAccent,
         elevation: 0,
         centerTitle: true,
       ),
@@ -34,29 +315,112 @@ class _AdminKycScreenState extends State<AdminKycScreen> {
         children: [
           // ── FILTER TABS ──
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             decoration: const BoxDecoration(
               color: AppColors.white,
               border: Border(
                 bottom: BorderSide(color: AppColors.black, width: 2),
               ),
             ),
-            child: Row(
-              children: [
-                _buildFilterChip('Menunggu'),
-                const SizedBox(width: 12),
-                _buildFilterChip('Riwayat'),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: filters.map((f) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _buildFilterChip(f),
+                  );
+                }).toList(),
+              ),
             ),
           ),
 
           // ── KYC LIST ──
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(20),
-              itemCount: selectedFilter == 'Menunggu' ? 4 : 2,
-              itemBuilder: (context, index) {
-                return _buildKycCard(context, index);
+            child: BlocConsumer<AdminCubit, AdminState>(
+              listener: (context, state) {
+                if (state is AdminActionSuccess) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      backgroundColor: AppColors.tealGreen,
+                    ),
+                  );
+                } else if (state is AdminError) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(state.message, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      backgroundColor: AppColors.error,
+                    ),
+                  );
+                }
+              },
+              builder: (context, state) {
+                if (state is AdminLoading) {
+                  return const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      children: [
+                        BrutalSkeleton(width: double.infinity, height: 120),
+                        SizedBox(height: 16),
+                        BrutalSkeleton(width: double.infinity, height: 120),
+                      ],
+                    ),
+                  );
+                }
+
+                final kycLoaded = state is AdminKycLoaded ? state : null;
+                final items = kycLoaded?.submissions ?? [];
+
+                if (items.isEmpty) {
+                  return RefreshIndicator(
+                    onRefresh: () =>
+                        context.read<AdminCubit>().loadKycSubmissions(status: selectedFilter),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.verified_user_outlined, size: 56, color: Colors.grey),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Antrian KYC Kosong',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Tidak ada pengajuan verifikasi dalam status ini.',
+                                style: GoogleFonts.spaceGrotesk(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return RefreshIndicator(
+                  onRefresh: () =>
+                      context.read<AdminCubit>().loadKycSubmissions(status: selectedFilter),
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(20),
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      return _buildKycCard(context, items[index]);
+                    },
+                  ),
+                );
               },
             ),
           ),
@@ -67,10 +431,18 @@ class _AdminKycScreenState extends State<AdminKycScreen> {
 
   Widget _buildFilterChip(String label) {
     final isSelected = selectedFilter == label;
+    final display = label == 'PENDING'
+        ? 'MENUNGGU'
+        : label == 'APPROVED'
+            ? 'DISETUJUI'
+            : label == 'REJECTED'
+                ? 'DITOLAK'
+                : 'SEMUA';
+
     return BrutalistBounce(
-      onTap: () => setState(() => selectedFilter = label),
+      onTap: () => _onFilterChanged(label),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? Colors.yellowAccent : AppColors.white,
           border: Border.all(color: AppColors.black, width: 2),
@@ -84,9 +456,9 @@ class _AdminKycScreenState extends State<AdminKycScreen> {
                 ],
         ),
         child: Text(
-          label.toUpperCase(),
+          display,
           style: GoogleFonts.spaceGrotesk(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w900,
           ),
         ),
@@ -94,17 +466,16 @@ class _AdminKycScreenState extends State<AdminKycScreen> {
     );
   }
 
-  Widget _buildKycCard(BuildContext context, int index) {
-    final List<String> names = [
-      'Andi Wijaya',
-      'Siti Aminah',
-      'Rizky Pratama',
-      'Dewi Lestari',
-    ];
-    final String currentName = names[index % names.length];
+  Widget _buildKycCard(BuildContext context, Map<String, dynamic> item) {
+    final kycId = item['id'] as String;
+    final fullName = item['fullName']?.toString() ?? '-';
+    final status = item['status']?.toString() ?? 'PENDING';
+    final user = item['user'] as Map<String, dynamic>?;
+    final email = user?['email']?.toString() ?? '-';
+    final isPending = status == 'PENDING';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: const EdgeInsets.only(bottom: 16),
       child: BrutalistCard(
         backgroundColor: AppColors.white,
         padding: const EdgeInsets.all(16),
@@ -115,8 +486,8 @@ class _AdminKycScreenState extends State<AdminKycScreen> {
             Row(
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     color: Colors.blue[100],
                     border: Border.all(color: AppColors.black, width: 2),
@@ -129,327 +500,99 @@ class _AdminKycScreenState extends State<AdminKycScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        currentName,
+                        fullName,
                         style: GoogleFonts.spaceGrotesk(
-                          fontSize: 18,
+                          fontSize: 16,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                       Text(
-                        'Diajukan: 10 Mei 2026',
+                        email,
                         style: GoogleFonts.spaceGrotesk(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
-                          color: Colors.grey[600],
+                          color: Colors.grey[700],
                         ),
                       ),
                     ],
                   ),
                 ),
-                if (selectedFilter == 'Riwayat')
-                  const BrutalistBadge(
-                    text: 'VERIFIED',
-                    backgroundColor: Colors.greenAccent,
-                  ),
+                BrutalistBadge(
+                  text: status,
+                  backgroundColor: status == 'APPROVED'
+                      ? AppColors.tealGreen
+                      : status == 'REJECTED'
+                          ? Colors.redAccent
+                          : Colors.orangeAccent,
+                ),
               ],
             ),
-            const SizedBox(height: 20),
-            
-            // ── TEXT DATA COMPARISON ──
-            _buildDataField('NIK', '327301280991000${index + 1}'),
-            const SizedBox(height: 12),
-            _buildDataField('NAMA LENGKAP', currentName.toUpperCase()),
-            
-            const SizedBox(height: 20),
-            
-            // ── IMAGE EVIDENCE ──
+            const SizedBox(height: 16),
             Row(
               children: [
-                _buildImageBox(context, 'KTP / IDENTITAS', Icons.badge_rounded),
-                const SizedBox(width: 12),
-                _buildImageBox(context, 'SELFIE DENGAN KTP', Icons.face_retouching_natural_rounded),
-              ],
-            ),
-            
-            if (selectedFilter == 'Menunggu') ...[
-              const SizedBox(height: 24),
-              Row(
-                children: [
+                Expanded(
+                  child: BrutalistButton(
+                    text: 'LIHAT DOKUMEN',
+                    backgroundColor: AppColors.paleYellow,
+                    height: 38,
+                    borderRadius: 4,
+                    icon: Icons.description_outlined,
+                    onPressed: () => _showDocumentDetail(context, kycId),
+                  ),
+                ),
+                if (isPending) ...[
+                  const SizedBox(width: 8),
                   Expanded(
                     child: BrutalistButton(
-                      text: 'TERIMA',
-                      backgroundColor: Colors.greenAccent,
-                      height: 50,
+                      text: 'SETUJUI',
+                      backgroundColor: AppColors.tealGreen,
+                      textColor: AppColors.white,
+                      height: 38,
                       borderRadius: 4,
-                      onPressed: () => _showApprovalDialog(context, currentName),
+                      onPressed: () => _showApproveConfirmation(context, kycId, fullName),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: BrutalistButton(
                       text: 'TOLAK',
                       backgroundColor: Colors.redAccent,
-                      height: 50,
+                      textColor: AppColors.white,
+                      height: 38,
                       borderRadius: 4,
-                      onPressed: () => _showRejectionModal(context),
+                      onPressed: () => _showRejectDialog(context, kycId, fullName),
                     ),
                   ),
                 ],
-              ),
-            ],
+              ],
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDataField(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.spaceGrotesk(
-            fontSize: 10,
-            fontWeight: FontWeight.w900,
-            color: Colors.grey[600],
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey[50],
-            border: Border.all(color: AppColors.black, width: 1.5),
-          ),
-          child: Text(
-            value,
-            style: GoogleFonts.spaceGrotesk(
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildImageBox(BuildContext context, String label, IconData icon) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: GoogleFonts.spaceGrotesk(fontSize: 9, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 4),
-          BrutalistBounce(
-            onTap: () => _showImageDialog(context, label, icon),
-            child: Container(
-              height: 90,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.grey[200],
-                border: Border.all(color: AppColors.black, width: 2),
-              ),
-              child: Stack(
-                children: [
-                  Center(
-                    child: Icon(icon, color: Colors.grey[400], size: 32),
-                  ),
-                  Positioned(
-                    bottom: 4,
-                    right: 4,
-                    child: Icon(Icons.zoom_in_rounded, size: 16, color: Colors.grey[600]),
-                  ),
-                ],
-              ),
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
             ),
           ),
-        ],
-      ),
-    );
-  }
-
-  void _showImageDialog(BuildContext context, String title, IconData icon) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            BrutalistCard(
-              backgroundColor: AppColors.white,
-              padding: const EdgeInsets.all(8),
-              borderRadius: 4,
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: Text(
-                          title,
-                          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  Container(
-                    height: 300,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      border: Border.all(color: AppColors.black, width: 2),
-                    ),
-                    child: InteractiveViewer(
-                      child: Center(
-                        child: Icon(icon, size: 120, color: Colors.grey[300]),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+          Text(
+            value,
+            style: GoogleFonts.spaceGrotesk(
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+              color: AppColors.black,
             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showRejectionModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) {
-          return Container(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-              left: 24,
-              right: 24,
-              top: 24,
-            ),
-            decoration: const BoxDecoration(
-              color: AppColors.white,
-              border: Border(
-                top: BorderSide(color: AppColors.black, width: 4),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ALASAN PENOLAKAN',
-                  style: GoogleFonts.spaceGrotesk(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                _rejectionOption(setModalState, 'Foto KTP buram atau tidak terbaca'),
-                _rejectionOption(setModalState, 'Selfie tidak cocok dengan KTP'),
-                _rejectionOption(setModalState, 'Bagian KTP terpotong'),
-                _rejectionOption(setModalState, 'Identitas dicurigai palsu'),
-                const SizedBox(height: 20),
-                const BrutalistTextField(
-                  hintText: 'Catatan Tambahan (Opsional)',
-                  prefixIcon: Icons.note_add_rounded,
-                ),
-                const SizedBox(height: 24),
-                BrutalistButton(
-                  text: 'KONFIRMASI TOLAK',
-                  backgroundColor: Colors.redAccent,
-                  textColor: AppColors.white,
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _rejectionOption(StateSetter setModalState, String label) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: BrutalistCard(
-        backgroundColor: AppColors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        borderRadius: 4,
-        onTap: () {}, // Would toggle selection logic in real app
-        child: Row(
-          children: [
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.black, width: 2),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w700, fontSize: 13),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showApprovalDialog(BuildContext context, String name) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.white,
-        shape: const RoundedRectangleBorder(
-            side: BorderSide(color: AppColors.black, width: 3)),
-        title: Text(
-          'KONFIRMASI',
-          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.w900),
-        ),
-        content: Text(
-          'Verifikasi identitas $name? Akun ini akan mendapatkan akses penuh.',
-          style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'BATAL',
-              style: GoogleFonts.spaceGrotesk(
-                  color: Colors.grey, fontWeight: FontWeight.w900),
-            ),
-          ),
-          BrutalistButton(
-            text: 'YA, TERIMA',
-            backgroundColor: Colors.greenAccent,
-            height: 40,
-            width: 140,
-            borderRadius: 4,
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('User Berhasil Diverifikasi'),
-                  backgroundColor: AppColors.black,
-                ),
-              );
-            },
           ),
         ],
       ),
